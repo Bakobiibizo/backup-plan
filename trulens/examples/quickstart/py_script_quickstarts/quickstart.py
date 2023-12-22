@@ -97,28 +97,29 @@ class RAG_from_scratch:
         """
         Generate answer from context.
         """
-        completion = oai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            temperature=0,
-            messages=[
-                {
-                    "role": "user",
-                    "content":
-                        f"We have provided context information below. \n"
+        return (
+            oai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"We have provided context information below. \n"
                         f"---------------------\n"
                         f"{context_str}"
                         f"\n---------------------\n"
-                        f"Given this information, please answer the question: {query}"
-                }
-            ]
-        ).choices[0].message.content
-        return completion
+                        f"Given this information, please answer the question: {query}",
+                    }
+                ],
+            )
+            .choices[0]
+            .message.content
+        )
 
     @instrument
     def query(self, query: str) -> str:
         context_str = self.retrieve(query)
-        completion = self.generate_completion(query, context_str)
-        return completion
+        return self.generate_completion(query, context_str)
 
 
 rag = RAG_from_scratch()

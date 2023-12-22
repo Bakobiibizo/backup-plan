@@ -72,8 +72,6 @@ class Bedrock(LLMProvider):
 
         response = self.endpoint.client.invoke_model(body=body, modelId=modelId)
 
-        response_body = json.loads(response.get('body').read()
-                                  ).get('results')[0]["outputText"]
-        # text
-
-        return response_body
+        return json.loads(response.get('body').read()).get('results')[0][
+            "outputText"
+        ]

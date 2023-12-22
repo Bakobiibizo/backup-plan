@@ -67,17 +67,15 @@ class TestLlamaIndex(JSONTestCase):
         self.assertJSONEqual(
             record_sync,
             record_async,
-            skips=set(
-                [
-                    "calls",  # async/sync have different set of internal calls, so cannot easily compare
-                    "name",
-                    "app_id",
-                    "ts",
-                    "start_time",
-                    "end_time",
-                    "record_id"
-                ]
-            )
+            skips={
+                "calls",
+                "name",
+                "app_id",
+                "ts",
+                "start_time",
+                "end_time",
+                "record_id",
+            },
         )
 
     @unittest.skip("Streaming records not yet recorded properly.")
@@ -110,17 +108,7 @@ class TestLlamaIndex(JSONTestCase):
         self.assertJSONEqual(
             record_stream,
             record,
-            skips=set(
-                [
-                    # "calls",
-                    "name",
-                    "app_id",
-                    "ts",
-                    "start_time",
-                    "end_time",
-                    "record_id"
-                ]
-            )
+            skips={"name", "app_id", "ts", "start_time", "end_time", "record_id"},
         )
 
     def test_chat_engine_async(self):
@@ -154,17 +142,15 @@ class TestLlamaIndex(JSONTestCase):
         self.assertJSONEqual(
             record_sync,
             record_async,
-            skips=set(
-                [
-                    "calls",  # async/sync have different set of internal calls, so cannot easily compare
-                    "name",
-                    "app_id",
-                    "ts",
-                    "start_time",
-                    "end_time",
-                    "record_id"
-                ]
-            )
+            skips={
+                "calls",
+                "name",
+                "app_id",
+                "ts",
+                "start_time",
+                "end_time",
+                "record_id",
+            },
         )
 
 

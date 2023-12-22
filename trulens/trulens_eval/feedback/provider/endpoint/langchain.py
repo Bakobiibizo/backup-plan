@@ -50,7 +50,7 @@ class LangchainEndpoint(Endpoint, WithClassInfo):
         if chain is None:
             raise ValueError("`chain` must be specified.")
 
-        if not (isinstance(chain, BaseLLM) or isinstance(chain, BaseChatModel)):
+        if not (isinstance(chain, (BaseLLM, BaseChatModel))):
             raise ValueError(
                 f"`chain` must be of type {BaseLLM.__name__} or {BaseChatModel.__name__}"
             )

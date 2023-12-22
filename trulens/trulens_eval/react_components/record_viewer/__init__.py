@@ -67,14 +67,6 @@ def record_viewer(record_json, app_json, key=None):
         this returns a JavaScript null, which is interpreted in python as a 0.
 
     """
-    # Call through to our private component function. Arguments we pass here
-    # will be sent to the frontend, where they'll be available in an "args"
-    # dictionary.
-    #
-    # "default" is a special argument that specifies the initial return
-    # value of the component before the user has interacted with it.
-    component_value = _record_viewer(
+    return _record_viewer(
         record_json=record_json, app_json=app_json, key=key, default=""
     )
-
-    return component_value

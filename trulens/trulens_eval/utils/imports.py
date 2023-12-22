@@ -20,9 +20,7 @@ pp = PrettyPrinter()
 
 def requirements_of_file(path: Path) -> Dict[str, pkg_resources.Requirement]:
     reqs = pkg_resources.parse_requirements(path.read_text())
-    mapping = {req.project_name: req for req in reqs}
-
-    return mapping
+    return {req.project_name: req for req in reqs}
 
 
 required_packages = requirements_of_file(
@@ -208,9 +206,9 @@ class Dummy(type, object):
         # inside this dummy.
         if self.importer is not None and self.importer.importing:
             return Dummy(
-                name=self.name + "." + name,
+                name=f"{self.name}.{name}",
                 message=self.message,
-                importer=self.importer
+                importer=self.importer,
             )
 
         # If we are no longer in optional imports context, raise the exception

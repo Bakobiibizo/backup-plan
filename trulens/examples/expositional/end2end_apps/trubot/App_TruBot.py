@@ -122,9 +122,7 @@ def generate_response(prompt):
 
 # Set up Streamlit app
 st.title("TruBot")
-user_input = st.text_input("Ask a question about TruEra")
-
-if user_input:
+if user_input := st.text_input("Ask a question about TruEra"):
     # Generate GPT-3 response
     prompt_input = user_input
     # add context manager to capture tokens and cost of the chain

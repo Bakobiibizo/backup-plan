@@ -33,7 +33,7 @@ class Prompt(app.Prompt, app.LangChainComponent):
         return self.json['template']
 
     def unsorted_parameters(self):
-        return super().unsorted_parameters(skip=set(['template']))
+        return super().unsorted_parameters(skip={'template'})
 
     @staticmethod
     def class_is(cls: Class) -> bool:
@@ -53,7 +53,7 @@ class LLM(app.LLM, app.LangChainComponent):
         return self.json['model_name']
 
     def unsorted_parameters(self):
-        return super().unsorted_parameters(skip=set(['model_name']))
+        return super().unsorted_parameters(skip={'model_name'})
 
     @staticmethod
     def class_is(cls: Class) -> bool:
@@ -116,23 +116,24 @@ class WithFeedbackFilterDocuments(VectorStoreRetriever):
         # Evaluate the filter on each, in parallel.
         ex = ThreadPoolExecutor(max_workers=max(1, len(docs)))
 
-        futures = list(
+        futures = [
             (
                 doc,
                 ex.submit(
                     (
-                        lambda doc, query: self.
-                        feedback(query, doc.page_content) > self.threshold
+                        lambda doc, query: self.feedback(query, doc.page_content)
+                        > self.threshold
                     ),
                     query=query,
-                    doc=doc
-                )
-            ) for doc in docs
-        )
+                    doc=doc,
+                ),
+            )
+            for doc in docs
+        ]
 
         wait([future for (_, future) in futures])
 
-        results = list((doc, future.result()) for (doc, future) in futures)
+        results = [(doc, future.result()) for (doc, future) in futures]
         filtered = map(first, filter(second, results))
 
         # Return only the filtered ones.

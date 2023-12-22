@@ -30,9 +30,7 @@ class Feedback(pydantic.BaseModel):
 
         ret = typ.__name__ + "\n"
 
-        fields = list(
-            f for f in cls.model_fields if f not in ["examples", "prompt"]
-        )
+        fields = [f for f in cls.model_fields if f not in ["examples", "prompt"]]
 
         onetab = make_retab("   ")
         twotab = make_retab("      ")
@@ -269,6 +267,8 @@ RELEVANCE: """
     )
 
 
+
+
 class Sentiment(Semantics, WithPrompt):
     """
 This evaluates the *positive sentiment* of either the prompt or response.
@@ -288,8 +288,9 @@ the model provider.
     # hugs.positive_sentiment
 
     prompt: ClassVar[PromptTemplate] = PromptTemplate.from_template(
-        f"""Please classify the sentiment of the following text as 10 if positive or 0 if not positive. Respond only as a number from 0 to 10, nothing more."""
+        """Please classify the sentiment of the following text as 10 if positive or 0 if not positive. Respond only as a number from 0 to 10, nothing more."""
     )
+
 
 
 class Helpfulness(Semantics):
@@ -405,9 +406,6 @@ class Hate(Moderation):
 
     - `openai` package: `openai.moderation` category `hate`.
     """
-    # openai.moderation_not_hate
-
-
 class Misogyny(Hate, WithPrompt):
     # openai.misogyny
     # openai.misogyny_with_cot_reasons
@@ -424,56 +422,36 @@ class HateThreatening(Hate):
 
     - `openai` package: `openai.moderation` category `hate/threatening`.
     """
-    # openai.not_hatethreatening
-
-
 class SelfHarm(Moderation):
     """
     Examples of (not) Self Harm metrics:
 
     - `openai` package: `openai.moderation` category `self-harm`.
     """
-
-
 class Sexual(Moderation):
     """
     Examples of (not) Sexual metrics:
 
     - `openai` package: `openai.moderation` category `sexual`.
     """
-
-
 class SexualMinors(Sexual):
     """
     Examples of (not) Sexual Minors metrics:
 
     - `openai` package: `openai.moderation` category `sexual/minors`.
     """
-
-
 class Violence(Moderation):
     """
     Examples of (not) Violence metrics:
 
     - `openai` package: `openai.moderation` category `violence`.
     """
-
-
 class GraphicViolence(Violence):
     """
     Examples of (not) Graphic Violence:
 
     - `openai` package: `openai.moderation` category `violence/graphic`.
     """
-
-
-# Level 2 abstraction
-
-# TODO: Design work here ongoing.
-
-## Feedback output types:
-
-
 class FeedbackOutputType(pydantic.BaseModel):
     min_feedback: float
     max_feedback: float
@@ -540,22 +518,25 @@ class COTExplanined(Feedback):
 
         system_prompt = system_prompt + cls.COT_REASONS_TEMPLATE
 
+
+
         class FeedbackWithExplanation(WithPrompt):
             prompt = system_prompt
 
             # TODO: things related to extracting score and reasons
 
             def extract_cot_explanation_of_response(
-                self, response: str, normalize=10
-            ):
-                if "Supporting Evidence" in response:
-                    score = 0
-                    for line in response.split('\n'):
-                        if "Score" in line:
-                            score = re_0_10_rating(line) / normalize
-                    return score, {"reason": response}
-                else:
+                        self, response: str, normalize=10
+                    ):
+                if "Supporting Evidence" not in response:
                     return re_0_10_rating(response) / normalize
+
+                score = 0
+                for line in response.split('\n'):
+                    if "Score" in line:
+                        score = re_0_10_rating(line) / normalize
+                return score, {"reason": response}
+
 
         return FeedbackWithExplanation(**feedback)
 

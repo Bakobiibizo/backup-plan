@@ -63,7 +63,7 @@ class TestDbV2Migration(TestCase):
                        "release_dbs").iterdir():
             _dbfile = folder / "default.sqlite"
 
-            if not "infty" in str(folder):
+            if "infty" not in str(folder):
                 # Future/unknown dbs have "infty" in their folder name.
                 continue
 

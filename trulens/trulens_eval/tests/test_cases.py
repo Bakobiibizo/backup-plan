@@ -206,12 +206,14 @@ context_relevance_golden_set = [
 def calculate_expected_score(normalized_metrics_lst, weights_lst):
     assert len(normalized_metrics_lst) == len(weights_lst)
     return round(
-        sum(
-            [
+        (
+            sum(
                 normalized_metrics_lst[i] * weights_lst[i]
                 for i in range(len(normalized_metrics_lst))
-            ]
-        ) / sum(weights_lst), 2
+            )
+            / sum(weights_lst)
+        ),
+        2,
     )
 
 

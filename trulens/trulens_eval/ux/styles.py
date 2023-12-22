@@ -84,11 +84,14 @@ class CATEGORY:
     def of_score(score: float, higher_is_better: bool = True) -> Category:
         direction_key = "HIGHER_IS_BETTER" if higher_is_better else "LOWER_IS_BETTER"
 
-        for cat in map(operator.itemgetter(direction_key), CATEGORY.ALL):
-            if cat.compare(score, cat.threshold):
-                return cat
-
-        return CATEGORY.UNKNOWN
+        return next(
+            (
+                cat
+                for cat in map(operator.itemgetter(direction_key), CATEGORY.ALL)
+                if cat.compare(score, cat.threshold)
+            ),
+            CATEGORY.UNKNOWN,
+        )
 
 
 default_direction = "HIGHER_IS_BETTER"

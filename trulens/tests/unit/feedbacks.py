@@ -72,9 +72,12 @@ def make_nonglobal_feedbacks():
     # globally importable ones above, they will get imported as them
     # incorrectly.
 
+
+
+
     class NG:  # "non-global"
 
-        def NGcustom_feedback_function(t1: str) -> float:
+        def NGcustom_feedback_function(self) -> float:
             return 0.1
 
         class NGCustomProvider(Provider):
@@ -126,5 +129,6 @@ def make_nonglobal_feedbacks():
 
             def method(self, t1: str) -> float:
                 return 1.0 + self.attr
+
 
     return NG

@@ -64,9 +64,7 @@ tc = setup_chain()
 
 # Set up Streamlit app
 st.title("Get Help from ChatGPT")
-user_input = st.text_input("What do you need help with?")
-
-if user_input:
+if user_input := st.text_input("What do you need help with?"):
     # Generate GPT-3 response
     prompt_input = user_input
     # add context manager to capture tokens and cost of the chain

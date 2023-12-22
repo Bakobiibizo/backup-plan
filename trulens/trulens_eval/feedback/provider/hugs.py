@@ -100,11 +100,10 @@ class Huggingface(Provider):
         # TODO: figure out why all of this logic is necessary:
         if endpoint is None:
             self_kwargs['endpoint'] = HuggingfaceEndpoint(**kwargs)
+        elif isinstance(endpoint, Endpoint):
+            self_kwargs['endpoint'] = endpoint
         else:
-            if isinstance(endpoint, Endpoint):
-                self_kwargs['endpoint'] = endpoint
-            else:
-                self_kwargs['endpoint'] = HuggingfaceEndpoint(**endpoint)
+            self_kwargs['endpoint'] = HuggingfaceEndpoint(**endpoint)
 
         self_kwargs['name'] = name or "huggingface"
 
@@ -240,7 +239,7 @@ class Huggingface(Provider):
             toxic".
         """
 
-        assert len(text) > 0, "Input cannot be blank."
+        assert text != "", "Input cannot be blank."
 
         max_length = 500
         truncated_text = text[:max_length]
@@ -269,9 +268,9 @@ class Huggingface(Provider):
             float: NLI Entailment
         """
 
-        if not '.' == premise[len(premise) - 1]:
-            premise = premise + '.'
-        nli_string = premise + ' ' + hypothesis
+        if premise[len(premise) - 1] != '.':
+            premise += '.'
+        nli_string = f'{premise} {hypothesis}'
         payload = {"inputs": nli_string}
         hf_response = self.endpoint.post(url=HUGS_NLI_API_URL, payload=payload)
 
@@ -296,7 +295,7 @@ class Huggingface(Provider):
         Returns:
             float: NLI Entailment
         """
-        nli_string = premise + ' [SEP] ' + hypothesis
+        nli_string = f'{premise} [SEP] {hypothesis}'
         payload = {"inputs": nli_string}
         hf_response = self.endpoint.post(
             url=HUGS_DOCNLI_API_URL, payload=payload
@@ -325,9 +324,6 @@ class Huggingface(Provider):
             - float: the likelihood that a name is contained in the input text.
         """
 
-        # Initialize a list to store scores for "NAME" entities
-        likelihood_scores = []
-
         payload = {"inputs": text}
 
         hf_response = self.endpoint.post(
@@ -343,10 +339,7 @@ class Huggingface(Provider):
                 f"Unexpected response from Huggingface API: {hf_response}"
             )
 
-        # Iterate through the entities and extract scores for "NAME" entities
-        for entity in hf_response:
-            likelihood_scores.append(entity["score"])
-
+        likelihood_scores = [entity["score"] for entity in hf_response]
         # Calculate the sum of all individual likelihood scores (P(A) + P(B) + ...)
         sum_individual_probabilities = sum(likelihood_scores)
 
@@ -359,9 +352,7 @@ class Huggingface(Provider):
                 pairwise_likelihood = likelihood_scores[i] * likelihood_scores[j]
                 total_likelihood -= pairwise_likelihood
 
-        score = 1 - total_likelihood
-
-        return score
+        return 1 - total_likelihood
 
     def pii_detection_with_cot_reasons(self, text: str):
         """
@@ -414,7 +405,7 @@ class Huggingface(Provider):
             )
 
         # Iterate through the entities and extract "word" and "score" for "NAME" entities
-        for i, entity in enumerate(hf_response):
+        for entity in hf_response:
             reasons[f"{entity.get('entity_group')} detected: {entity['word']}"
                    ] = f"PII Likelihood: {entity['score']}"
             likelihood_scores.append(entity["score"])

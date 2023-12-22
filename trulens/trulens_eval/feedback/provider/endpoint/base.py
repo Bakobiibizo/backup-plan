@@ -218,22 +218,17 @@ class Endpoint(SerialModel, SingletonPerName):
         if isinstance(j, Dict) and "error" in j:
             error = j['error']
             logger.error(f"API error: {j}.")
-            if error == "overloaded":
-                logger.error("Waiting for overloaded API before trying again.")
-                sleep(10.0)
-                return self.post(url, payload)
-            else:
+            if error != "overloaded":
                 raise RuntimeError(error)
 
+            logger.error("Waiting for overloaded API before trying again.")
+            sleep(10.0)
+            return self.post(url, payload)
         assert isinstance(
             j, Sequence
         ) and len(j) > 0, f"Post did not return a sequence: {j}"
 
-        if len(j) == 1:
-            return j[0]
-
-        else:
-            return j
+        return j[0] if len(j) == 1 else j
 
     def run_me(self, thunk: Thunk[T]) -> T:
         """
@@ -247,8 +242,7 @@ class Endpoint(SerialModel, SingletonPerName):
         while retries > 0:
             try:
                 self.pace_me()
-                ret = thunk()
-                return ret
+                return thunk()
             except Exception as e:
                 retries -= 1
                 logger.error(
@@ -452,12 +446,7 @@ class Endpoint(SerialModel, SingletonPerName):
             with_bedrock=with_bedrock
         )
 
-        if len(cbs) == 0:
-            # Otherwise sum returns "0" below.
-            costs = Cost()
-        else:
-            costs = sum(cb.cost for cb in cbs)
-
+        costs = Cost() if len(cbs) == 0 else sum(cb.cost for cb in cbs)
         return result, costs
 
     @staticmethod
@@ -482,12 +471,7 @@ class Endpoint(SerialModel, SingletonPerName):
             with_bedrock=with_bedrock,
         )
 
-        if len(cbs) == 0:
-            # Otherwise sum returns "0" below.
-            costs = Cost()
-        else:
-            costs = sum(cb.cost for cb in cbs)
-
+        costs = Cost() if len(cbs) == 0 else sum(cb.cost for cb in cbs)
         return result, costs
 
     @staticmethod
@@ -504,29 +488,13 @@ class Endpoint(SerialModel, SingletonPerName):
 
         # Check to see if this call is within another _track_costs call:
         endpoints: Dict[Type[EndpointCallback], Sequence[Tuple[Endpoint, EndpointCallback]]] = \
-            get_first_local_in_call_stack(
+                get_first_local_in_call_stack(
                 key="endpoints",
                 func=Endpoint.__find_tracker,
                 offset=1
             )
 
-        if endpoints is None:
-            # If not, lets start a new collection of endpoints here along with
-            # the callbacks for each. See type above.
-
-            endpoints = dict()
-
-        else:
-            # We copy the dict here so that the outer call to _track_costs will
-            # have their own version unaffacted by our additions below. Once
-            # this frame returns, the outer frame will have its own endpoints
-            # again and any wrapped method will get that smaller set of
-            # endpoints.
-
-            # TODO: check if deep copy is needed given we are storing lists in
-            # the values and don't want to affect the existing ones here.
-            endpoints = endpoints.copy()
-
+        endpoints = dict() if endpoints is None else endpoints.copy()
         # Collect any new endpoints requested of us.
         with_endpoints = with_endpoints or []
 
@@ -568,29 +536,13 @@ class Endpoint(SerialModel, SingletonPerName):
 
         # Check to see if this call is within another _track_costs call:
         endpoints: Dict[Type[EndpointCallback], Sequence[Tuple[Endpoint, EndpointCallback]]] = \
-            get_first_local_in_call_stack(
+                get_first_local_in_call_stack(
                 key="endpoints",
                 func=Endpoint.__find_tracker,
                 offset=1
             )
 
-        if endpoints is None:
-            # If not, lets start a new collection of endpoints here along with
-            # the callbacks for each. See type above.
-
-            endpoints = dict()
-
-        else:
-            # We copy the dict here so that the outer call to _track_costs will
-            # have their own version unaffacted by our additions below. Once
-            # this frame returns, the outer frame will have its own endpoints
-            # again and any wrapped method will get that smaller set of
-            # endpoints.
-
-            # TODO: check if deep copy is needed given we are storing lists in
-            # the values and don't want to affect the existing ones here.
-            endpoints = endpoints.copy()
-
+        endpoints = dict() if endpoints is None else endpoints.copy()
         # Collect any new endpoints requested of us.
         with_endpoints = with_endpoints or []
 
@@ -1052,17 +1004,16 @@ class DummyEndpoint(Endpoint):
 
         if isinstance(j, Dict) and "error" in j:
             error = j['error']
-            if error == "overloaded":
-                warnings.warn(
-                    "Waiting for overloaded API before trying again.",
-                    ResourceWarning,
-                    stacklevel=2
-                )
-                sleep(10)
-                return self.post(url, payload)
-            else:
+            if error != "overloaded":
                 raise RuntimeError(error)
 
+            warnings.warn(
+                "Waiting for overloaded API before trying again.",
+                ResourceWarning,
+                stacklevel=2
+            )
+            sleep(10)
+            return self.post(url, payload)
         assert isinstance(
             j, Sequence
         ) and len(j) > 0, f"Post did not return a sequence: {j}"

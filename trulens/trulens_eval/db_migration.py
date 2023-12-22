@@ -178,9 +178,7 @@ def migrate_0_9_0(db):
     )
 
     conn, c = db._connect()
-    c.execute(
-        f"""SELECT * FROM records"""
-    )  # Use hardcode names as versions could go through name change
+    c.execute("""SELECT * FROM records""")
     rows = c.fetchall()
     json_db_col_idx = 4
 
@@ -196,7 +194,7 @@ def migrate_0_9_0(db):
             new_json=new_json
         )
 
-    c.execute(f"""SELECT * FROM feedback_defs""")
+    c.execute("""SELECT * FROM feedback_defs""")
     rows = c.fetchall()
     json_db_col_idx = 1
     for old_entry in tqdm(rows,
@@ -209,11 +207,11 @@ def migrate_0_9_0(db):
 
         if "initial_app_loader" not in new_json:
             new_json['initial_app_loader'] = None
-            logger.debug(f"adding 'initial_app_loader'")
+            logger.debug("adding 'initial_app_loader'")
 
         if "initial_app_loader_dump" not in new_json:
             new_json['initial_app_loader_dump'] = None
-            logger.debug(f"adding 'initial_app_loader_dump'")
+            logger.debug("adding 'initial_app_loader_dump'")
 
         _update_db_json_col(
             db=db,
@@ -223,7 +221,7 @@ def migrate_0_9_0(db):
             new_json=new_json
         )
 
-    c.execute(f"""SELECT * FROM apps""")
+    c.execute("""SELECT * FROM apps""")
     rows = c.fetchall()
     json_db_col_idx = 1
     for old_entry in tqdm(rows, desc="Migrating Apps DB 0.9.0 to 0.19.0"):
@@ -235,7 +233,7 @@ def migrate_0_9_0(db):
 
         if "app" not in new_json:
             new_json['app'] = dict()
-            logger.debug(f"adding `app`")
+            logger.debug("adding `app`")
 
         _update_db_json_col(
             db=db,
@@ -250,8 +248,10 @@ def migrate_0_9_0(db):
 
 def migrate_0_3_0(db):
     conn, c = db._connect()
-    c.execute(f"""ALTER TABLE feedbacks
-        ADD multi_result TEXT;""")
+    c.execute(
+        """ALTER TABLE feedbacks
+        ADD multi_result TEXT;"""
+    )
     conn.commit()
 
 
@@ -263,9 +263,7 @@ def migrate_0_2_0(db):
     """
 
     conn, c = db._connect()
-    c.execute(
-        f"""SELECT * FROM records"""
-    )  # Use hardcode names as versions could go through name change
+    c.execute("""SELECT * FROM records""")
     rows = c.fetchall()
     json_db_col_idx = 7
 
@@ -290,7 +288,7 @@ def migrate_0_2_0(db):
             new_json=new_json
         )
 
-    c.execute(f"""SELECT * FROM feedbacks""")
+    c.execute("""SELECT * FROM feedbacks""")
     rows = c.fetchall()
     json_db_col_idx = 9
     for old_entry in tqdm(rows, desc="Migrating Feedbacks DB 0.2.0 to 0.3.0"):
@@ -305,7 +303,7 @@ def migrate_0_2_0(db):
             new_json=new_json
         )
 
-    c.execute(f"""SELECT * FROM feedback_defs""")
+    c.execute("""SELECT * FROM feedback_defs""")
     rows = c.fetchall()
     json_db_col_idx = 1
     for old_entry in tqdm(rows,
@@ -342,7 +340,7 @@ def migrate_0_1_2(db):
     conn, c = db._connect()
 
     c.execute(
-        f"""ALTER TABLE records
+        """ALTER TABLE records
         RENAME COLUMN chain_id TO app_id;
         """
     )
@@ -352,12 +350,12 @@ def migrate_0_1_2(db):
         DEFAULT "{MIGRATION_UNKNOWN_STR}";"""
     )
 
-    c.execute(f"""ALTER TABLE feedbacks
-        DROP COLUMN chain_id;""")
-
     c.execute(
-        f"""SELECT * FROM records"""
-    )  # Use hardcode names as versions could go through name change
+        """ALTER TABLE feedbacks
+        DROP COLUMN chain_id;"""
+    )
+
+    c.execute("""SELECT * FROM records""")
     rows = c.fetchall()
     json_db_col_idx = 4
     for old_entry in tqdm(rows, desc="Migrating Records DB 0.1.2 to 0.2.0"):
@@ -377,7 +375,7 @@ def migrate_0_1_2(db):
             new_json=new_json
         )
 
-    c.execute(f"""SELECT * FROM chains""")
+    c.execute("""SELECT * FROM chains""")
     rows = c.fetchall()
     json_db_col_idx = 1
     for old_entry in tqdm(rows, desc="Migrating Apps DB 0.1.2 to 0.2.0"):
@@ -568,10 +566,10 @@ def _serialization_asserts(db) -> None:
         c.execute(f"""PRAGMA table_info({table});
                 """)
         columns = c.fetchall()
+        col_name_idx = 1
         for col_idx, col in tqdm(
                 enumerate(columns),
                 desc=f"Validating clean migration of table {table}"):
-            col_name_idx = 1
             col_name = col[col_name_idx]
             # This is naive for now...
             if "json" in col_name:

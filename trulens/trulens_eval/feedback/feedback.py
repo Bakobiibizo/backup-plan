@@ -81,60 +81,53 @@ class Feedback(FeedbackDefinition):
         # imp is the python function/method while implementation is a serialized
         # json structure. Create the one that is missing based on the one that
         # is provided:
-        if imp is not None:
-            # These are for serialization to/from json and for db storage.
-            if 'implementation' not in kwargs:
-                try:
-                    kwargs['implementation'] = FunctionOrMethod.of_callable(
-                        imp, loadable=True
-                    )
-
-                except Exception as e:
-                    logger.warning(
-                        f"Feedback implementation {imp} cannot be serialized: {e} "
-                        f"This may be ok unless you are using the deferred feedback mode."
-                    )
-
-                    kwargs['implementation'] = FunctionOrMethod.of_callable(
-                        imp, loadable=False
-                    )
-
-        else:
+        if imp is None:
             if "implementation" in kwargs:
                 imp: ImpCallable = FunctionOrMethod.model_validate(
                     kwargs['implementation']
                 ).load() if kwargs['implementation'] is not None else None
 
-        # Similarly with agg and aggregator.
-        if agg is not None:
-            if kwargs.get('aggregator') is None:
-                try:
-                    # These are for serialization to/from json and for db storage.
-                    kwargs['aggregator'] = FunctionOrMethod.of_callable(
-                        agg, loadable=True
-                    )
-                except Exception as e:
-                    # User defined functions in script do not have a module so cannot be serialized
-                    logger.warning(
-                        f"Cannot serialize aggregator {agg}. "
-                        f"Deferred mode will default to `np.mean` as aggregator. "
-                        f"If you are not using FeedbackMode.DEFERRED, you can safely ignore this warning. "
-                        f"{e}"
-                    )
-                    # These are for serialization to/from json and for db storage.
-                    kwargs['aggregator'] = FunctionOrMethod.of_callable(
-                        agg, loadable=False
-                    )
+        elif 'implementation' not in kwargs:
+            try:
+                kwargs['implementation'] = FunctionOrMethod.of_callable(
+                    imp, loadable=True
+                )
 
-        else:
-            if kwargs.get('aggregator') is not None:
-                agg: AggCallable = FunctionOrMethod.model_validate(
-                    kwargs['aggregator']
-                ).load()
-            else:
-                # Default aggregator if neither serialized `aggregator` or
-                # loaded `agg` were specified.
-                agg = np.mean
+            except Exception as e:
+                logger.warning(
+                    f"Feedback implementation {imp} cannot be serialized: {e} "
+                    f"This may be ok unless you are using the deferred feedback mode."
+                )
+
+                kwargs['implementation'] = FunctionOrMethod.of_callable(
+                    imp, loadable=False
+                )
+
+        # Similarly with agg and aggregator.
+        if agg is None:
+            agg = (
+                FunctionOrMethod.model_validate(kwargs['aggregator']).load()
+                if kwargs.get('aggregator') is not None
+                else np.mean
+            )
+        elif kwargs.get('aggregator') is None:
+            try:
+                # These are for serialization to/from json and for db storage.
+                kwargs['aggregator'] = FunctionOrMethod.of_callable(
+                    agg, loadable=True
+                )
+            except Exception as e:
+                # User defined functions in script do not have a module so cannot be serialized
+                logger.warning(
+                    f"Cannot serialize aggregator {agg}. "
+                    f"Deferred mode will default to `np.mean` as aggregator. "
+                    f"If you are not using FeedbackMode.DEFERRED, you can safely ignore this warning. "
+                    f"{e}"
+                )
+                # These are for serialization to/from json and for db storage.
+                kwargs['aggregator'] = FunctionOrMethod.of_callable(
+                    agg, loadable=False
+                )
 
         super().__init__(**kwargs)
 
@@ -142,11 +135,7 @@ class Feedback(FeedbackDefinition):
         self.agg = agg
 
         # By default, higher score is better
-        if higher_is_better is None:
-            self.higher_is_better = True
-        else:
-            self.higher_is_better = higher_is_better
-
+        self.higher_is_better = True if higher_is_better is None else higher_is_better
         # Verify that `imp` expects the arguments specified in `selectors`:
         if self.imp is not None:
             sig: Signature = signature(self.imp)
@@ -182,11 +171,11 @@ class Feedback(FeedbackDefinition):
 
     def _print_guessed_selector(self, par_name, par_path):
         if par_path == Select.RecordCalls:
-            alias_info = f" or `Select.RecordCalls`"
+            alias_info = " or `Select.RecordCalls`"
         elif par_path == Select.RecordInput:
-            alias_info = f" or `Select.RecordInput`"
+            alias_info = " or `Select.RecordInput`"
         elif par_path == Select.RecordOutput:
-            alias_info = f" or `Select.RecordOutput`"
+            alias_info = " or `Select.RecordOutput`"
         else:
             alias_info = ""
 
@@ -203,9 +192,7 @@ class Feedback(FeedbackDefinition):
         assert self.imp is not None, "Feedback function implementation is required to determine default argument names."
 
         sig: Signature = signature(self.imp)
-        par_names = list(
-            k for k in sig.parameters.keys() if k not in self.selectors
-        )
+        par_names = [k for k in sig.parameters.keys() if k not in self.selectors]
 
         if len(par_names) == 1:
             # A single argument remaining. Assume it is record output.
@@ -359,27 +346,24 @@ class Feedback(FeedbackDefinition):
         )
 
     def _next_unselected_arg_name(self):
-        if self.imp is not None:
-            sig = signature(self.imp)
-            par_names = list(
-                k for k in sig.parameters.keys() if k not in self.selectors
-            )
-            if "self" in par_names:
-                logger.warning(
-                    f"Feedback function `{self.imp.__name__}` has `self` as argument. "
-                    "Perhaps it is static method or its Provider class was not initialized?"
-                )
-            if len(par_names) == 0:
-                raise TypeError(
-                    f"Feedback implementation {self.imp} with signature {sig} has no more inputs. "
-                    "Perhaps you meant to evalute it on App output only instead of app input and output?"
-                )
-
-            return par_names[0]
-        else:
+        if self.imp is None:
             raise RuntimeError(
                 "Cannot determine name of feedback function parameter without its definition."
             )
+        sig = signature(self.imp)
+        par_names = [k for k in sig.parameters.keys() if k not in self.selectors]
+        if "self" in par_names:
+            logger.warning(
+                f"Feedback function `{self.imp.__name__}` has `self` as argument. "
+                "Perhaps it is static method or its Provider class was not initialized?"
+            )
+        if not par_names:
+            raise TypeError(
+                f"Feedback implementation {self.imp} with signature {sig} has no more inputs. "
+                "Perhaps you meant to evalute it on App output only instead of app input and output?"
+            )
+
+        return par_names[0]
 
     def on_prompt(self, arg: Optional[str] = None):
         """
@@ -464,11 +448,7 @@ class Feedback(FeedbackDefinition):
         Might not have a AppDefinitionhere but only the serialized app_json .
         """
 
-        if isinstance(app, AppDefinition):
-            app_json = jsonify(app)
-        else:
-            app_json = app
-
+        app_json = jsonify(app) if isinstance(app, AppDefinition) else app
         result_vals = []
 
         feedback_calls = []
@@ -504,15 +484,14 @@ class Feedback(FeedbackDefinition):
                     cost += part_cost
                 except Exception as e:
                     raise RuntimeError(
-                        f"Evaluation of {self.name} failed on inputs: \n{pp.pformat(ins)[0:128]}\n{e}."
+                        f"Evaluation of {self.name} failed on inputs: \n{pp.pformat(ins)[:128]}\n{e}."
                     )
 
                 if isinstance(result_and_meta, Tuple):
                     # If output is a tuple of two, we assume it is the float/multifloat and the metadata.
-                    assert len(result_and_meta) == 2, (
-                        f"Feedback functions must return either a single float, "
-                        f"a float-valued dict, or these in combination with a dictionary as a tuple."
-                    )
+                    assert (
+                        len(result_and_meta) == 2
+                    ), 'Feedback functions must return either a single float, a float-valued dict, or these in combination with a dictionary as a tuple.'
                     result_val, meta = result_and_meta
 
                     assert isinstance(
@@ -546,7 +525,7 @@ class Feedback(FeedbackDefinition):
                 result_vals.append(result_val)
                 feedback_calls.append(feedback_call)
 
-            if len(result_vals) == 0:
+            if not result_vals:
                 warnings.warn(
                     f"Feedback function {self.supplied_name if self.supplied_name is not None else self.name} with aggregation {self.agg} had no inputs.",
                     UserWarning,
@@ -554,29 +533,28 @@ class Feedback(FeedbackDefinition):
                 )
                 result = np.nan
 
+            elif isinstance(result_vals[0], float):
+                result_vals = np.array(result_vals)
+                result = self.agg(result_vals)
             else:
-                if isinstance(result_vals[0], float):
-                    result_vals = np.array(result_vals)
+                try:
+                    # Operates on list of dict; Can be a dict output
+                    # (maintain multi) or a float output (convert to single)
                     result = self.agg(result_vals)
-                else:
-                    try:
-                        # Operates on list of dict; Can be a dict output
-                        # (maintain multi) or a float output (convert to single)
-                        result = self.agg(result_vals)
-                    except:
-                        # Alternatively, operate the agg per key
-                        result = {}
-                        for feedback_output in result_vals:
-                            for key in feedback_output:
-                                if key not in result:
-                                    result[key] = []
-                                result[key].append(feedback_output[key])
-                        for key in result:
-                            result[key] = self.agg(result[key])
+                except:
+                    # Alternatively, operate the agg per key
+                    result = {}
+                    for feedback_output in result_vals:
+                        for key in feedback_output:
+                            if key not in result:
+                                result[key] = []
+                            result[key].append(feedback_output[key])
+                    for key in result:
+                        result[key] = self.agg(result[key])
 
-                    if isinstance(result, dict):
-                        multi_result = result
-                        result = np.nan
+                if isinstance(result, dict):
+                    multi_result = result
+                    result = np.nan
 
             feedback_result.update(
                 result=result,
@@ -698,4 +676,4 @@ class Feedback(FeedbackDefinition):
         assignments = itertools.product(*vals)
 
         for assignment in assignments:
-            yield {k: v for k, v in zip(keys, assignment)}
+            yield dict(zip(keys, assignment))

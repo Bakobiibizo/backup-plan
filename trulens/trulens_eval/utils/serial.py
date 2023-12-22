@@ -108,14 +108,13 @@ class SerialBytes(pydantic.BaseModel):
     def model_validate(cls, obj, **kwargs):
         import base64
 
-        if isinstance(obj, Dict):
-            encoded = obj['data']
-            if isinstance(encoded, str):
-                return SerialBytes(data=base64.b64decode(encoded))
-            elif isinstance(encoded, bytes):
-                return SerialBytes(data=encoded)
-            else:
-                raise ValueError(obj)
+        if not isinstance(obj, Dict):
+            raise ValueError(obj)
+        encoded = obj['data']
+        if isinstance(encoded, str):
+            return SerialBytes(data=base64.b64decode(encoded))
+        elif isinstance(encoded, bytes):
+            return SerialBytes(data=encoded)
         else:
             raise ValueError(obj)
 
@@ -192,7 +191,7 @@ class Collect(Step):
         raise NotImplementedError()
 
     def __repr__(self):
-        return f".collect()"
+        return ".collect()"
 
 
 class StepItemOrAttribute(Step):
@@ -229,13 +228,8 @@ class GetAttribute(StepItemOrAttribute):
         # might cause isses
         obj = copy(obj)
 
-        if hasattr(obj, self.attribute):
-            setattr(obj, self.attribute, val)
-            return obj
-        else:
-            # might fail
-            setattr(obj, self.attribute, val)
-            return obj
+        setattr(obj, self.attribute, val)
+        return obj
 
     def __repr__(self):
         return f".{self.attribute}"
@@ -250,13 +244,12 @@ class GetIndex(Step):
 
     # Step requirement
     def get(self, obj: Sequence[T]) -> Iterable[T]:
-        if isinstance(obj, Sequence):
-            if len(obj) > self.index:
-                yield obj[self.index]
-            else:
-                raise IndexError(f"Index out of bounds: {self.index}")
-        else:
+        if not isinstance(obj, Sequence):
             raise ValueError(f"Object {obj} is not a sequence.")
+        if len(obj) > self.index:
+            yield obj[self.index]
+        else:
+            raise IndexError(f"Index out of bounds: {self.index}")
 
     # Step requirement
     def set(self, obj: Any, val: Any) -> Any:
@@ -292,13 +285,12 @@ class GetItem(StepItemOrAttribute):
 
     # Step requirement
     def get(self, obj: Dict[str, T]) -> Iterable[T]:
-        if isinstance(obj, Dict):
-            if self.item in obj:
-                yield obj[self.item]
-            else:
-                raise KeyError(f"Key not in dictionary: {self.item}")
-        else:
+        if not isinstance(obj, Dict):
             raise ValueError(f"Object {obj} is not a dictionary.")
+        if self.item in obj:
+            yield obj[self.item]
+        else:
+            raise KeyError(f"Key not in dictionary: {self.item}")
 
     # Step requirement
     def set(self, obj: Any, val: Any) -> Any:
@@ -308,7 +300,7 @@ class GetItem(StepItemOrAttribute):
         assert isinstance(obj, Dict), "Dictionary expected."
 
         # copy
-        obj = {k: v for k, v in obj.items()}
+        obj = dict(obj.items())
 
         obj[self.item] = val
         return obj
@@ -339,9 +331,8 @@ class GetItemOrAttribute(StepItemOrAttribute):
         # Special handling of sequences. See NOTE above.
         if isinstance(obj, Sequence):
             if len(obj) == 1:
-                for r in self.get(obj=obj[0]):
-                    yield r
-            elif len(obj) == 0:
+                yield from self.get(obj=obj[0])
+            elif not obj:
                 raise ValueError(
                     f"Object not a dictionary or sequence of dictionaries: {obj}."
                 )
@@ -351,10 +342,7 @@ class GetItemOrAttribute(StepItemOrAttribute):
                     f"Lookup by item or attribute `{self.item_or_attribute}` is ambiguous. "
                     f"Use a lookup by index(es) or slice first to disambiguate."
                 )
-                for r in self.get(obj=obj[0]):
-                    yield r
-
-        # Otherwise handle a dict or object with the named attribute.
+                yield from self.get(obj=obj[0])
         elif isinstance(obj, Dict):
             if self.item_or_attribute in obj:
                 yield obj[self.item_or_attribute]
@@ -362,13 +350,12 @@ class GetItemOrAttribute(StepItemOrAttribute):
                 raise KeyError(
                     f"Key not in dictionary: {self.item_or_attribute}"
                 )
+        elif hasattr(obj, self.item_or_attribute):
+            yield getattr(obj, self.item_or_attribute)
         else:
-            if hasattr(obj, self.item_or_attribute):
-                yield getattr(obj, self.item_or_attribute)
-            else:
-                raise ValueError(
-                    f"Object {obj} does not have item or attribute {self.item_or_attribute}."
-                )
+            raise ValueError(
+                f"Object {obj} does not have item or attribute {self.item_or_attribute}."
+            )
 
     # Step requirement
     def set(self, obj: Any, val: Any) -> Any:
@@ -378,7 +365,7 @@ class GetItemOrAttribute(StepItemOrAttribute):
         if isinstance(obj, Dict) and not isinstance(obj, Bunch):
             # Bunch claims to be a Dict.
             # copy
-            obj = {k: v for k, v in obj.items()}
+            obj = dict(obj.items())
             obj[self.item_or_attribute] = val
         else:
             obj = copy(obj)  # might cause issues
@@ -507,7 +494,7 @@ class GetItems(Step):
         assert isinstance(obj, Dict), "Dictionary expected."
 
         # copy
-        obj = {k: v for k, v in obj.items()}
+        obj = dict(obj.items())
 
         for i in self.items:
             obj[i] = val
@@ -560,8 +547,7 @@ class Lens(pydantic.BaseModel, Sized, Hashable):
         # different than obj. Might be a pydantic oversight/bug.
 
         if isinstance(obj, str):
-            ret = Lens.of_string(obj)
-            return ret
+            return Lens.of_string(obj)
         elif isinstance(obj, dict):
             return handler(
                 dict(path=(Step.model_validate(step) for step in obj['path']))
@@ -589,7 +575,7 @@ class Lens(pydantic.BaseModel, Sized, Hashable):
         # which are valid python expressions (with additional constraints) can
         # be converted.
 
-        if len(s) == 0:
+        if not s:
             return Lens()
 
         try:
@@ -799,11 +785,7 @@ class Lens(pydantic.BaseModel, Sized, Hashable):
         if len(p) > len(pother):
             return False
 
-        for s1, s2 in zip(p, pother):
-            if s1 != s2:
-                return False
-
-        return True
+        return all(s1 == s2 for s1, s2 in zip(p, pother))
 
     def set_or_append(self, obj: Any, val: Any) -> Any:
         """
@@ -876,7 +858,7 @@ class Lens(pydantic.BaseModel, Sized, Hashable):
         funcname = self.path[-1].get_item_or_attribute()
 
         if funcname == "collect":
-            return Lens(path=self.path[0:-1] + (Collect(),))
+            return Lens(path=self.path[:-1] + (Collect(),))
 
         else:
             raise TypeError(error_msg)
@@ -889,11 +871,7 @@ class Lens(pydantic.BaseModel, Sized, Hashable):
         # Need to do the recursion by breaking down steps from the end in order
         # to support `Collect`.
         last_step = self.path[-1]
-        if len(self.path) == 1:
-            start = Lens(path=())
-        else:
-            start = Lens(path=self.path[0:-1])
-
+        start = Lens(path=()) if len(self.path) == 1 else Lens(path=self.path[:-1])
         start_items = start.get(obj)
 
         if isinstance(last_step, Collect):
@@ -901,8 +879,7 @@ class Lens(pydantic.BaseModel, Sized, Hashable):
 
         else:
             for start_selection in start_items:
-                for last_selection in last_step.get(start_selection):
-                    yield last_selection
+                yield from last_step.get(start_selection)
 
     def _append(self, step: Step) -> 'Lens':
         return Lens(path=self.path + (step,))
@@ -960,23 +937,21 @@ def leaf_queries(obj_json: JSON, query: Lens = None) -> Iterable[Lens]:
 
     query = query or Lens()
 
-    if isinstance(obj_json, JSON_BASES):
+    if (
+        isinstance(obj_json, JSON_BASES)
+        or not isinstance(obj_json, Dict)
+        and not isinstance(obj_json, Sequence)
+    ):
         yield query
 
     elif isinstance(obj_json, Dict):
         for k, v in obj_json.items():
             sub_query = query[k]
-            for res in leaf_queries(obj_json[k], sub_query):
-                yield res
-
-    elif isinstance(obj_json, Sequence):
+            yield from leaf_queries(obj_json[k], sub_query)
+    else:
         for i, v in enumerate(obj_json):
             sub_query = query[i]
-            for res in leaf_queries(obj_json[i], sub_query):
-                yield res
-
-    else:
-        yield query
+            yield from leaf_queries(obj_json[i], sub_query)
 
 
 def all_queries(obj: Any, query: Lens = None) -> Iterable[Lens]:
@@ -986,7 +961,12 @@ def all_queries(obj: Any, query: Lens = None) -> Iterable[Lens]:
 
     query = query or Lens()
 
-    if isinstance(obj, JSON_BASES):
+    if (
+        isinstance(obj, JSON_BASES)
+        or not isinstance(obj, pydantic.BaseModel)
+        and not isinstance(obj, Dict)
+        and not isinstance(obj, Sequence)
+    ):
         yield query
 
     elif isinstance(obj, pydantic.BaseModel):
@@ -995,27 +975,19 @@ def all_queries(obj: Any, query: Lens = None) -> Iterable[Lens]:
         for k in obj.model_fields:
             v = getattr(obj, k)
             sub_query = query[k]
-            for res in all_queries(v, sub_query):
-                yield res
-
+            yield from all_queries(v, sub_query)
     elif isinstance(obj, Dict):
         yield query
 
         for k, v in obj.items():
             sub_query = query[k]
-            for res in all_queries(obj[k], sub_query):
-                yield res
-
-    elif isinstance(obj, Sequence):
+            yield from all_queries(obj[k], sub_query)
+    else:
         yield query
 
         for i, v in enumerate(obj):
             sub_query = query[i]
-            for res in all_queries(obj[i], sub_query):
-                yield res
-
-    else:
-        yield query
+            yield from all_queries(obj[i], sub_query)
 
 
 def all_objects(obj: Any, query: Lens = None) -> Iterable[Tuple[Lens, Any]]:
@@ -1034,21 +1006,15 @@ def all_objects(obj: Any, query: Lens = None) -> Iterable[Tuple[Lens, Any]]:
         for k in obj.model_fields:
             v = getattr(obj, k)
             sub_query = query[k]
-            for res in all_objects(v, sub_query):
-                yield res
-
+            yield from all_objects(v, sub_query)
     elif isinstance(obj, Dict):
         for k, v in obj.items():
             sub_query = query[k]
-            for res in all_objects(obj[k], sub_query):
-                yield res
-
+            yield from all_objects(obj[k], sub_query)
     elif isinstance(obj, Sequence):
         for i, v in enumerate(obj):
             sub_query = query[i]
-            for res in all_objects(obj[i], sub_query):
-                yield res
-
+            yield from all_objects(obj[i], sub_query)
     elif isinstance(obj, Iterable):
         logger.debug(
             f"Cannot create query for Iterable types like {obj.__class__.__name__} at query {query}. Convert the iterable to a sequence first."

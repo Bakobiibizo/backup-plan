@@ -92,9 +92,3 @@ class OpenAIProvider(Provider):
             raise ValueError(
                 "Cannot classify for model {model} without at least a prompt."
             )
-
-        if isinstance(model, WithExamples):
-            # add few shots
-            pass
-
-        pass

@@ -108,13 +108,7 @@ class TestTruChain(JSONTestCase):
         llm = ChatOpenAI(temperature=0.0)
         chain = LLMChain(llm=llm, prompt=prompt)
 
-        # Note that without WITH_APP mode, there might be a delay between return
-        # of a with_record and the record appearing in the db.
-        tc = tru.Chain(
-            chain, app_id=app_id, feedback_mode=FeedbackMode.WITH_APP
-        )
-
-        return tc
+        return tru.Chain(chain, app_id=app_id, feedback_mode=FeedbackMode.WITH_APP)
 
     def test_record_metadata_plain(self):
         # Test inclusion of metadata in records.
@@ -280,9 +274,7 @@ class TestTruChain(JSONTestCase):
         self.assertJSONEqual(
             async_record.model_dump(),
             sync_record.model_dump(),
-            skips=set(
-                ["id", "name", "ts", "start_time", "end_time", "record_id"]
-            )
+            skips={"id", "name", "ts", "start_time", "end_time", "record_id"},
         )
 
     def test_async_token_gen(self):
@@ -319,17 +311,15 @@ class TestTruChain(JSONTestCase):
         self.assertJSONEqual(
             async_record.model_dump(),
             sync_record.model_dump(),
-            skips=set(
-                [
-                    "id",
-                    "cost",  # usage info in streaming mode seems to not be available for openai by default https://community.openai.com/t/usage-info-in-api-responses/18862
-                    "name",
-                    "ts",
-                    "start_time",
-                    "end_time",
-                    "record_id"
-                ]
-            )
+            skips={
+                "id",
+                "cost",
+                "name",
+                "ts",
+                "start_time",
+                "end_time",
+                "record_id",
+            },
         )
 
         # Check that we counted the number of chunks at least.

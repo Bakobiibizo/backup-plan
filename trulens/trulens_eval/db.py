@@ -251,16 +251,8 @@ class LocalSQLite(DB):
         try:
             c.execute(f'''SELECT key, value FROM {self.TABLE_META}''')
             rows = c.fetchall()
-            ret = {}
-
-            for row in rows:
-                ret[row[0]] = row[1]
-
-            if 'trulens_version' in ret:
-                trulens_version = ret['trulens_version']
-            else:
-                trulens_version = None
-
+            ret = {row[0]: row[1] for row in rows}
+            trulens_version = ret.get('trulens_version', None)
             return DBMeta(trulens_version=trulens_version, attributes=ret)
 
         except Exception as e:
@@ -281,7 +273,7 @@ class LocalSQLite(DB):
         if meta.trulens_version is None:
             db_version = __version__
             c.execute(
-                f"""
+                """
                 SELECT name FROM sqlite_master  
                 WHERE type='table';
                 """
@@ -432,11 +424,9 @@ class LocalSQLite(DB):
         rows = c.fetchall()
         self._close(conn)
 
-        df = pd.DataFrame(
+        return pd.DataFrame(
             rows, columns=[description[0] for description in c.description]
         )
-
-        return df
 
     def _insert_or_replace_vals(self, table, vals):
         conn, c = self._connect()
@@ -520,8 +510,8 @@ class LocalSQLite(DB):
             vars.append(last_ts_before.timestamp())
 
         where_clause = " AND ".join(clauses)
-        if len(where_clause) > 0:
-            where_clause = " AND " + where_clause
+        if where_clause != "":
+            where_clause = f" AND {where_clause}"
 
         query = f"""
             SELECT
@@ -697,16 +687,11 @@ class LocalSQLite(DB):
         )
 
         def nonempty(val):
-            if isinstance(val, float):
-                return not np.isnan(val)
-            return True
+            return not np.isnan(val) if isinstance(val, float) else True
 
         def merge_feedbacks(vals):
             ress = list(filter(nonempty, vals))
-            if len(ress) > 0:
-                return ress[0]
-            else:
-                return np.nan
+            return ress[0] if ress else np.nan
 
         df_results = df_results.groupby("record_id").agg(merge_feedbacks
                                                         ).reset_index()

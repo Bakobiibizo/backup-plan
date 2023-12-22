@@ -32,7 +32,7 @@ class Prompt(app.Prompt, app.LlamaIndexComponent):
         return self.json['template']
 
     def unsorted_parameters(self):
-        return super().unsorted_parameters(skip=set(['template']))
+        return super().unsorted_parameters(skip={'template'})
 
     @staticmethod
     def class_is(cls: Class) -> bool:
@@ -67,7 +67,7 @@ class Tool(app.Tool, app.LlamaIndexComponent):
             return "no name given"
 
     def unsorted_parameters(self):
-        return super().unsorted_parameters(skip=set(['model']))
+        return super().unsorted_parameters(skip={'model'})
 
     @staticmethod
     def class_is(cls: Class) -> bool:
@@ -83,7 +83,7 @@ class LLM(app.LLM, app.LlamaIndexComponent):
         return self.json['model']
 
     def unsorted_parameters(self):
-        return super().unsorted_parameters(skip=set(['model']))
+        return super().unsorted_parameters(skip={'model'})
 
     @staticmethod
     def class_is(cls: Class) -> bool:

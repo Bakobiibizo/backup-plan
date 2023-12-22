@@ -415,28 +415,29 @@ class RAG_from_scratch:
         """
         Generate answer from context.
         """
-        completion = oai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            temperature=0,
-            messages=[
-                {
-                    "role": "user",
-                    "content":
-                        f"We have provided context information below. \n"
+        return (
+            oai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"We have provided context information below. \n"
                         f"---------------------\n"
                         f"{context_str}"
                         f"\n---------------------\n"
-                        f"Given this information, please answer the question: {query}"
-                }
-            ]
-        ).choices[0].message.content
-        return completion
+                        f"Given this information, please answer the question: {query}",
+                    }
+                ],
+            )
+            .choices[0]
+            .message.content
+        )
 
     @instrument
     def query(self, query: str) -> str:
         context_str = self.retrieve(query)
-        completion = self.generate_completion(query, context_str)
-        return completion
+        return self.generate_completion(query, context_str)
 
 
 rag = RAG_from_scratch()
@@ -559,17 +560,20 @@ class APP:
 
     @instrument
     def completion(self, prompt):
-        completion = oai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            temperature=0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Please answer the question: {prompt}"
-                }
-            ]
-        ).choices[0].message.content
-        return completion
+        return (
+            oai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Please answer the question: {prompt}",
+                    }
+                ],
+            )
+            .choices[0]
+            .message.content
+        )
 
 
 llm_app = APP()
@@ -655,17 +659,20 @@ class APP:
 
     @instrument
     def completion(self, prompt):
-        completion = oai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            temperature=0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Please answer the question: {prompt}"
-                }
-            ]
-        ).choices[0].message.content
-        return completion
+        return (
+            oai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Please answer the question: {prompt}",
+                    }
+                ],
+            )
+            .choices[0]
+            .message.content
+        )
 
 
 llm_app = APP()
@@ -778,17 +785,20 @@ class APP:
 
     @instrument
     def completion(self, prompt):
-        completion = oai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            temperature=0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Please answer the question: {prompt}"
-                }
-            ]
-        ).choices[0].message.content
-        return completion
+        return (
+            oai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                temperature=0,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Please answer the question: {prompt}",
+                    }
+                ],
+            )
+            .choices[0]
+            .message.content
+        )
 
 
 llm_app = APP()
@@ -1018,7 +1028,7 @@ class StandAlone(Provider):
         Returns:
             float: square length of the text
         """
-        return 1.0 / (1.0 + len(my_text_field) * len(my_text_field))
+        return 1.0 / (1.0 + len(my_text_field)**2)
 
 
 # 2. Instantiate your provider and feedback functions. The feedback function is wrapped by the trulens-eval Feedback class which helps specify what will get sent to your function parameters (For example: Select.RecordInput or Select.RecordOutput)
@@ -1077,10 +1087,7 @@ tru.add_feedbacks(feedback_results)
 
 # For multi-context chunking, an aggregator can operate on a list of multi output dictionaries.
 def dict_aggregator(list_dict_input):
-    agg = 0
-    for dict_input in list_dict_input:
-        agg += dict_input['output_key1']
-    return agg
+    return sum(dict_input['output_key1'] for dict_input in list_dict_input)
 
 
 multi_output_feedback = Feedback(

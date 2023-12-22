@@ -29,8 +29,7 @@ class VariableSettingPreprocessor(ExecutePreprocessor):
     def preprocess_cell(self, cell, resources, index, **kwargs):
         if cell["cell_type"] == "code":
             cell["source"] = self.code_to_run_before_each_cell + cell["source"]
-        ret = super().preprocess_cell(cell, resources, index, **kwargs)
-        return ret
+        return super().preprocess_cell(cell, resources, index, **kwargs)
 
 
 class DBMigrationPreprocessor(VariableSettingPreprocessor):
@@ -54,10 +53,8 @@ class DBMigrationPreprocessor(VariableSettingPreprocessor):
             cell["source"] = cell[
                 "source"
             ] + f"\nfrom trulens_eval import Tru\ntru=Tru()\ntru.migrate_database()\n" \
-            + f"\nfrom trulens_eval.database.migrations.db_data_migration import _sql_alchemy_serialization_asserts\n_sql_alchemy_serialization_asserts(tru.db)\n"
-        ret = super().preprocess_cell(cell, resources, index, **kwargs)
-
-        return ret
+                + f"\nfrom trulens_eval.database.migrations.db_data_migration import _sql_alchemy_serialization_asserts\n_sql_alchemy_serialization_asserts(tru.db)\n"
+        return super().preprocess_cell(cell, resources, index, **kwargs)
 
 
 def get_unit_test_for_filename(filename, db_compat_version=None):
@@ -71,19 +68,16 @@ def get_unit_test_for_filename(filename, db_compat_version=None):
 
         notebook_preprocessor = VariableSettingPreprocessor
         notebook_preprocessor_kwargs = {
-            'timeout':
-                600,
-            'kernel_name':
-                'trulens-llm',
-            'code_to_run_before_each_cell':
-                [
-                    f"import os",
-                    f"os.environ['OPENAI_API_KEY']='{OPENAI_API_KEY}'",
-                    f"os.environ['HUGGINGFACE_API_KEY']='{HUGGINGFACE_API_KEY}'",
-                    f"os.environ['PINECONE_API_KEY']='{PINECONE_API_KEY}'",
-                    f"os.environ['PINECONE_ENV']='{PINECONE_ENV}'",
-                    f"os.environ['HUGGINGFACEHUB_API_TOKEN']='{HUGGINGFACEHUB_API_TOKEN}'",
-                ]
+            'timeout': 600,
+            'kernel_name': 'trulens-llm',
+            'code_to_run_before_each_cell': [
+                "import os",
+                f"os.environ['OPENAI_API_KEY']='{OPENAI_API_KEY}'",
+                f"os.environ['HUGGINGFACE_API_KEY']='{HUGGINGFACE_API_KEY}'",
+                f"os.environ['PINECONE_API_KEY']='{PINECONE_API_KEY}'",
+                f"os.environ['PINECONE_ENV']='{PINECONE_ENV}'",
+                f"os.environ['HUGGINGFACEHUB_API_TOKEN']='{HUGGINGFACEHUB_API_TOKEN}'",
+            ],
         }
         if db_compat_version is not None:
             notebook_preprocessor = DBMigrationPreprocessor

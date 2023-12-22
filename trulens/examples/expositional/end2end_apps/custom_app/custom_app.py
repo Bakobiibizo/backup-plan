@@ -49,13 +49,13 @@ class CustomApp:
         # make use of threads.
         ex = ThreadPoolExecutor(max_workers=max(1, len(chunks)))
 
-        futures = list(
-            ex.submit(lambda chunk: chunk + " processed", chunk=chunk)
+        futures = [
+            ex.submit(lambda chunk: f"{chunk} processed", chunk=chunk)
             for chunk in chunks
-        )
+        ]
 
         wait(futures)
-        chunks = list(future.result() for future in futures)
+        chunks = [future.result() for future in futures]
 
         self.memory.remember(input)
 
@@ -74,7 +74,7 @@ class CustomApp:
         async def async_generator():
             for tok in res.split(" "):
                 await sleep(0.05)
-                yield tok + " "
+                yield f"{tok} "
 
         gen_task = asyncio.Task(async_generator())
 

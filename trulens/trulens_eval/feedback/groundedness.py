@@ -89,17 +89,21 @@ class Groundedness(SerialModel, WithClassInfo):
         groundedness_scores = {}
         if isinstance(self.groundedness_provider,
                       (AzureOpenAI, OpenAI, LiteLLM, Bedrock)):
-            groundedness_scores[f"full_doc_score"] = re_0_10_rating(
-                self.groundedness_provider.
-                _groundedness_doc_in_out(source, statement)
-            ) / 10
+            groundedness_scores["full_doc_score"] = (
+                re_0_10_rating(
+                    self.groundedness_provider._groundedness_doc_in_out(
+                        source, statement
+                    )
+                )
+                / 10
+            )
             reason = "Reasons not supplied for non chain of thought function"
         elif isinstance(self.groundedness_provider, Huggingface):
             reason = ""
+            plausible_junk_char_min = 4  # very likely "sentences" under 4 characters are punctuation, spaces, etc
             for i, hypothesis in enumerate(
                     tqdm(statement.split("."),
                          desc="Groundendess per statement in source")):
-                plausible_junk_char_min = 4  # very likely "sentences" under 4 characters are punctuation, spaces, etc
                 if len(hypothesis) > plausible_junk_char_min:
                     score = self.groundedness_provider._doc_groundedness(
                         premise=source, hypothesis=hypothesis
@@ -143,7 +147,6 @@ class Groundedness(SerialModel, WithClassInfo):
         Returns:
             float: A measure between 0 and 1, where 1 means each sentence is grounded in the source.
         """
-        groundedness_scores = {}
         if isinstance(self.groundedness_provider,
                       (AzureOpenAI, OpenAI, LiteLLM, Bedrock)):
             plausible_junk_char_min = 4  # very likely "sentences" under 4 characters are punctuation, spaces, etc
@@ -152,6 +155,7 @@ class Groundedness(SerialModel, WithClassInfo):
                     source, statement
                 )
             i = 0
+            groundedness_scores = {}
             for line in reason.split('\n'):
                 if "Score" in line:
                     groundedness_scores[f"statement_{i}"
@@ -195,10 +199,10 @@ class Groundedness(SerialModel, WithClassInfo):
         """
         groundedness_scores = {}
         reason = ""
+        plausible_junk_char_min = 4  # very likely "sentences" under 4 characters are punctuation, spaces, etc
         for i, hypothesis in enumerate(
                 tqdm(statement.split("."),
                      desc="Groundendess per statement in source")):
-            plausible_junk_char_min = 4  # very likely "sentences" under 4 characters are punctuation, spaces, etc
             if len(hypothesis) > plausible_junk_char_min:
                 supporting_premise = self.groundedness_provider._find_relevant_string(
                     source, hypothesis
@@ -227,8 +231,6 @@ class Groundedness(SerialModel, WithClassInfo):
         Returns:
             float: for each statement, gets the max groundedness, then averages over that.
         """
-        all_results = []
-
         statements_to_scores = {}
 
         # Ensure source_statements_multi_output is a list
@@ -241,7 +243,5 @@ class Groundedness(SerialModel, WithClassInfo):
                     statements_to_scores[k] = []
                 statements_to_scores[k].append(multi_output[k])
 
-        for k in statements_to_scores:
-            all_results.append(np.max(statements_to_scores[k]))
-
+        all_results = [np.max(v) for v in statements_to_scores.values()]
         return np.mean(all_results)

@@ -98,7 +98,7 @@ def json_default(obj: Any) -> str:
         return noserio(obj)
 
 
-ALL_SPECIAL_KEYS = set([CIRCLE, ERROR, CLASS_INFO, NOSERIO])
+ALL_SPECIAL_KEYS = {CIRCLE, ERROR, CLASS_INFO, NOSERIO}
 
 
 def jsonify_for_ui(*args, **kwargs):
@@ -153,17 +153,9 @@ def jsonify(
         recur_key = lambda k: True
 
     if id(obj) in dicted:
-        if skip_specials:
-            return None
-        else:
-            return {CIRCLE: id(obj)}
-
+        return None if skip_specials else {CIRCLE: id(obj)}
     if isinstance(obj, JSON_BASES):
-        if redact_keys and isinstance(obj, str):
-            return redact_value(obj)
-        else:
-            return obj
-
+        return redact_value(obj) if redact_keys and isinstance(obj, str) else obj
     # TODO: remove eventually
     if isinstance(obj, SerialBytes):
         return obj.model_dump()
@@ -175,7 +167,7 @@ def jsonify(
         return pydantic.v1.json.ENCODERS_BY_TYPE[type(obj)](obj)
 
     # TODO: should we include duplicates? If so, dicted needs to be adjusted.
-    new_dicted = {k: v for k, v in dicted.items()}
+    new_dicted = dict(dicted.items())
 
     recur = lambda o: jsonify(
         obj=o,
@@ -205,17 +197,13 @@ def jsonify(
     elif isinstance(obj, Sequence):
         temp = []
         new_dicted[id(obj)] = temp
-        for x in (recur(v) for v in obj):
-            temp.append(x)
-
+        temp.extend(iter((recur(v) for v in obj)))
         content = temp
 
     elif isinstance(obj, Set):
         temp = []
         new_dicted[id(obj)] = temp
-        for x in (recur(v) for v in obj):
-            temp.append(x)
-
+        temp.extend(iter((recur(v) for v in obj)))
         content = temp
 
     elif isinstance(obj, pydantic.v1.BaseModel):
@@ -295,10 +283,12 @@ def jsonify(
         # TODO(piotrm): object walks redo
         temp.update(
             {
-                k: recur(v) for k, v in kvs.items() if recur_key(k) and (
-                    isinstance(v, JSON_BASES) or isinstance(v, Dict) or
-                    isinstance(v, Sequence) or
-                    instrument.to_instrument_object(v)
+                k: recur(v)
+                for k, v in kvs.items()
+                if recur_key(k)
+                and (
+                    isinstance(v, (JSON_BASES, Dict, Sequence))
+                    or instrument.to_instrument_object(v)
                 )
             }
         )
@@ -307,7 +297,7 @@ def jsonify(
 
     else:
         logger.debug(
-            f"Do not know how to jsonify an object '{str(obj)[0:32]}' of type '{type(obj)}'."
+            f"Do not know how to jsonify an object '{str(obj)[:32]}' of type '{type(obj)}'."
         )
 
         content = noserio(obj)

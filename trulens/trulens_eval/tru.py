@@ -332,11 +332,11 @@ class Tru(SingletonPerName):
 
         col_agg_list = feedback_cols + ['latency', 'total_cost']
 
-        leaderboard = df.groupby('app_id')[col_agg_list].mean().sort_values(
-            by=feedback_cols, ascending=False
+        return (
+            df.groupby('app_id')[col_agg_list]
+            .mean()
+            .sort_values(by=feedback_cols, ascending=False)
         )
-
-        return leaderboard
 
     def start_evaluator(self,
                         restart=False,
@@ -431,27 +431,26 @@ class Tru(SingletonPerName):
                     "You may be able to shut other instances by setting the `force` flag."
                 )
 
-            else:
-                if sys.platform.startswith("win"):
-                    raise RuntimeError(
-                        "Force stop option is not supported on windows."
-                    )
+            if sys.platform.startswith("win"):
+                raise RuntimeError(
+                    "Force stop option is not supported on windows."
+                )
 
-                print("Force stopping dashboard ...")
-                import os
-                import pwd  # PROBLEM: does not exist on windows
+            print("Force stopping dashboard ...")
+            import os
+            import pwd  # PROBLEM: does not exist on windows
 
-                import psutil
-                username = pwd.getpwuid(os.getuid())[0]
-                for p in psutil.process_iter():
-                    try:
-                        cmd = " ".join(p.cmdline())
-                        if "streamlit" in cmd and "Leaderboard.py" in cmd and p.username(
-                        ) == username:
-                            print(f"killing {p}")
-                            p.kill()
-                    except Exception as e:
-                        continue
+            import psutil
+            username = pwd.getpwuid(os.getuid())[0]
+            for p in psutil.process_iter():
+                try:
+                    cmd = " ".join(p.cmdline())
+                    if "streamlit" in cmd and "Leaderboard.py" in cmd and p.username(
+                    ) == username:
+                        print(f"killing {p}")
+                        p.kill()
+                except Exception as e:
+                    continue
 
         else:
             Tru.dashboard_proc.kill()
@@ -592,7 +591,7 @@ class Tru(SingletonPerName):
                     line = pipe.readline()
                     if "url" in line:
                         started.set()
-                        line = "Go to this url and submit the ip given here. " + line
+                        line = f"Go to this url and submit the ip given here. {line}"
 
                     if out is not None:
                         out.append_stdout(line)
