@@ -107,18 +107,16 @@ class Cost(SerialModel):
     cost: float = 0.0
 
     def __add__(self, other: 'Cost') -> 'Cost':
-        kwargs = {}
-        for k in self.model_fields.keys():
-            kwargs[k] = getattr(self, k) + getattr(other, k)
+        kwargs = {
+            k: getattr(self, k) + getattr(other, k)
+            for k in self.model_fields.keys()
+        }
         return Cost(**kwargs)
 
     def __radd__(self, other: 'Cost') -> 'Cost':
         # Makes sum work on lists of Cost.
 
-        if other == 0:
-            return self
-
-        return self.__add__(other)
+        return self if other == 0 else self.__add__(other)
 
 
 class Perf(SerialModel):
@@ -301,25 +299,25 @@ class Select:
         ret = ""
         rest = None
 
-        if query.path[0:2] == Select.RecordInput.path:
+        if query.path[:2] == Select.RecordInput.path:
             ret = "Select.RecordInput"
             rest = query.path[2:]
-        elif query.path[0:2] == Select.RecordOutput.path:
+        elif query.path[:2] == Select.RecordOutput.path:
             ret = "Select.RecordOutput"
             rest = query.path[2:]
 
-        elif query.path[0:4] == Select.RecordArgs.path:
+        elif query.path[:4] == Select.RecordArgs.path:
             ret = "Select.RecordArgs"
             rest = query.path[4:]
-        elif query.path[0:4] == Select.RecordRets.path:
+        elif query.path[:4] == Select.RecordRets.path:
             ret = "Select.RecordRets"
             rest = query.path[4:]
 
-        elif query.path[0:2] == Select.RecordCalls.path:
+        elif query.path[:2] == Select.RecordCalls.path:
             ret = "Select.RecordCalls"
             rest = query.path[2:]
 
-        elif query.path[0:3] == Select.RecordCall.path:
+        elif query.path[:3] == Select.RecordCall.path:
             ret = "Select.RecordCall"
             rest = query.path[3:]
 
@@ -424,10 +422,7 @@ class FeedbackResult(SerialModel):
         self.feedback_result_id = feedback_result_id
 
 
-if TYPE_CHECKING:
-    TFeedbackResultFuture = Future[FeedbackResult]
-else:
-    TFeedbackResultFuture = Future
+TFeedbackResultFuture = Future[FeedbackResult] if TYPE_CHECKING else Future
 
 
 class FeedbackDefinition(SerialModel, WithClassInfo):

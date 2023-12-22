@@ -148,30 +148,25 @@ class LLMProvider(Provider, ABC):
         response = self.endpoint.run_me(
             lambda: self._create_chat_completion(messages=llm_messages)
         )
-        if "Supporting Evidence" in response:
-            score = 0.0
-            supporting_evidence = ""
-            for line in response.split('\n'):
-                if "Score" in line:
-                    score = re_0_10_rating(line) / normalize
-                if "Criteria" in line:
-                    parts = line.split(":")
-                    if len(parts) > 1:
-                        criteria = ":".join(parts[1:]).strip()
-                if "Supporting Evidence" in line:
-                    parts = line.split(":")
-                    if len(parts) > 1:
-                        supporting_evidence = ":".join(parts[1:]).strip()
-            reasons = {
-                'reason':
-                    (
-                        f"{'Criteria: ' + str(criteria) + ' ' if criteria else ''}\n"
-                        f"{'Supporting Evidence: ' + str(supporting_evidence) if supporting_evidence else ''}"
-                    )
-            }
-            return score, reasons
-        else:
+        if "Supporting Evidence" not in response:
             return re_0_10_rating(response) / normalize
+        score = 0.0
+        supporting_evidence = ""
+        for line in response.split('\n'):
+            if "Score" in line:
+                score = re_0_10_rating(line) / normalize
+            if "Criteria" in line:
+                parts = line.split(":")
+                if len(parts) > 1:
+                    criteria = ":".join(parts[1:]).strip()
+            if "Supporting Evidence" in line:
+                parts = line.split(":")
+                if len(parts) > 1:
+                    supporting_evidence = ":".join(parts[1:]).strip()
+        reasons = {
+            'reason': f"{f'Criteria: {str(criteria)} ' if criteria else ''}\n{f'Supporting Evidence: {str(supporting_evidence)}' if supporting_evidence else ''}"
+        }
+        return score, reasons
 
     def qs_relevance(self, question: str, statement: str) -> float:
         """

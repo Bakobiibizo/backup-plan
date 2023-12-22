@@ -90,14 +90,14 @@ class SelectorValue(HasTraits):
 
     def update(self):
         obj = self.obj
-        jpath = self.selector.jpath
-
         inner_obj = None
         inner_class = None
 
         if obj is None:
             ret_html = "no listing yet"
         else:
+            jpath = self.selector.jpath
+
             with self.stdout_display:
                 try:
                     ret_html = ""
@@ -112,23 +112,24 @@ class SelectorValue(HasTraits):
                         # if isinstance(inner_obj, pydantic.BaseModel):
                         #    inner_obj = inner_obj.model_dump()
 
-                        if isinstance(inner_obj, JSON_BASES):
-                            ret_html += str(inner_obj)[0:VALUE_MAX_CHARS]
+                        if (
+                            isinstance(inner_obj, JSON_BASES)
+                            or not isinstance(inner_obj, Mapping)
+                            and not isinstance(inner_obj, Sequence)
+                        ):
+                            ret_html += str(inner_obj)[:VALUE_MAX_CHARS]
 
                         elif isinstance(inner_obj, Mapping):
                             ret_html += "<ul>"
                             for key, val in inner_obj.items():
-                                ret_html += f"<li>{key} = {str(val)[0:VALUE_MAX_CHARS]}</li>"
-                            ret_html += "</ul>"
-
-                        elif isinstance(inner_obj, Sequence):
-                            ret_html += "<ul>"
-                            for i, val in enumerate(inner_obj):
-                                ret_html += f"<li>[{i}] = {str(val)[0:VALUE_MAX_CHARS]}</li>"
+                                ret_html += f"<li>{key} = {str(val)[:VALUE_MAX_CHARS]}</li>"
                             ret_html += "</ul>"
 
                         else:
-                            ret_html += str(inner_obj)[0:VALUE_MAX_CHARS]
+                            ret_html += "<ul>"
+                            for i, val in enumerate(inner_obj):
+                                ret_html += f"<li>[{i}] = {str(val)[:VALUE_MAX_CHARS]}</li>"
+                            ret_html += "</ul>"
 
                         ret_html += "</div>"
 

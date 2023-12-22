@@ -481,7 +481,6 @@ def flatten(nested: Iterable[Iterable[Any]]) -> List[Any]:
 
     def _flatten(_nested):
         for iterable in _nested:
-            for element in iterable:
-                yield element
+            yield from iterable
 
     return list(_flatten(nested))

@@ -12,4 +12,4 @@ class CustomLLM:
     def generate(self, prompt: str):
         sleep(0.01)
 
-        return "herp " + prompt[::-1] + " derp"
+        return f"herp {prompt[::-1]} derp"

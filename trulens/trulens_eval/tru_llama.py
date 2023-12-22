@@ -301,10 +301,7 @@ class TruLlama(App):
         Which attribute in ret contains the main output of this llama_index app.
         """
 
-        if isinstance(ret, Response):  # query, aquery
-            return "response"
-
-        elif isinstance(ret, AgentChatResponse):  #  chat, achat
+        if isinstance(ret, (Response, AgentChatResponse)):  # query, aquery
             return "response"
 
         elif isinstance(ret, (StreamingResponse, StreamingAgentChatResponse)):

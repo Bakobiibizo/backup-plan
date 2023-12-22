@@ -100,10 +100,9 @@ class GroundTruthAgreement(SerialModel, WithClassInfo):
         if self.ground_truth_imp is not None:
             return self.ground_truth_imp(prompt)
 
-        responses = [
+        if responses := [
             qr["response"] for qr in self.ground_truth if qr["query"] == prompt
-        ]
-        if responses:
+        ]:
             return responses[0]
         else:
             return None
@@ -112,12 +111,11 @@ class GroundTruthAgreement(SerialModel, WithClassInfo):
         if self.ground_truth_imp is not None:
             return self.ground_truth_imp(prompt)
 
-        responses = [
+        if responses := [
             qr["expected_score"]
             for qr in self.ground_truth
             if qr["query"] == prompt and qr["response"] == response
-        ]
-        if responses:
+        ]:
             return responses[0]
         else:
             return None
@@ -155,18 +153,15 @@ class GroundTruthAgreement(SerialModel, WithClassInfo):
                 being "in agreement".
             - dict: with key 'ground_truth_response'
         """
-        ground_truth_response = self._find_response(prompt)
-        if ground_truth_response:
+        if ground_truth_response := self._find_response(prompt):
             agreement_txt = self.provider._get_answer_agreement(
                 prompt, response, ground_truth_response
             )
-            ret = re_0_10_rating(agreement_txt) / 10, dict(
+            return re_0_10_rating(agreement_txt) / 10, dict(
                 ground_truth_response=ground_truth_response
             )
         else:
-            ret = np.nan
-
-        return ret
+            return np.nan
 
     def mae(self, prompt: str, response: str, score: float) -> float:
         """
@@ -192,7 +187,7 @@ class GroundTruthAgreement(SerialModel, WithClassInfo):
 
         expected_score = self._find_score(prompt, response)
         if expected_score:
-            ret = abs(float(score) - expected_score)
+            ret = abs(score - expected_score)
             expected_score = "{:.2f}".format(expected_score
                                             ).rstrip('0').rstrip('.')
         else:
@@ -231,18 +226,15 @@ class GroundTruthAgreement(SerialModel, WithClassInfo):
         """
         if self.bert_scorer is None:
             self.bert_scorer = BERTScorer(lang="en", rescale_with_baseline=True)
-        ground_truth_response = self._find_response(prompt)
-        if ground_truth_response:
+        if ground_truth_response := self._find_response(prompt):
             bert_score = self.bert_scorer.score(
                 [response], [ground_truth_response]
             )
-            ret = bert_score[0].item(), dict(
+            return bert_score[0].item(), dict(
                 ground_truth_response=ground_truth_response
             )
         else:
-            ret = np.nan
-
-        return ret
+            return np.nan
 
     # TODEP
     def bleu(self, prompt: str,
@@ -275,18 +267,15 @@ class GroundTruthAgreement(SerialModel, WithClassInfo):
             - dict: with key 'ground_truth_response'
         """
         bleu = evaluate.load('bleu')
-        ground_truth_response = self._find_response(prompt)
-        if ground_truth_response:
+        if ground_truth_response := self._find_response(prompt):
             bleu_score = bleu.compute(
                 predictions=[response], references=[ground_truth_response]
             )
-            ret = bleu_score['bleu'], dict(
+            return bleu_score['bleu'], dict(
                 ground_truth_response=ground_truth_response
             )
         else:
-            ret = np.nan
-
-        return ret
+            return np.nan
 
     # TODEP
     def rouge(self, prompt: str,
@@ -305,15 +294,12 @@ class GroundTruthAgreement(SerialModel, WithClassInfo):
             - dict: with key 'ground_truth_response'
         """
         rouge = evaluate.load('rouge')
-        ground_truth_response = self._find_response(prompt)
-        if ground_truth_response:
+        if ground_truth_response := self._find_response(prompt):
             rouge_score = rouge.compute(
                 predictions=[response], references=[ground_truth_response]
             )
-            ret = rouge_score['rouge1'], dict(
+            return rouge_score['rouge1'], dict(
                 ground_truth_response=ground_truth_response
             )
         else:
-            ret = np.nan
-
-        return ret
+            return np.nan

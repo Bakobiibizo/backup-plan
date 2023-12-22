@@ -163,7 +163,7 @@ class BedrockEndpoint(Endpoint, WithClassInfo):
             return
 
         # For constructing BedrockClient below:
-        client_kwargs = {k: v for k, v in kwargs.items()}  # copy
+        client_kwargs = dict(kwargs)
         client_kwargs['region_name'] = region_name
 
         kwargs['region_name'] = region_name
@@ -230,7 +230,7 @@ class BedrockEndpoint(Endpoint, WithClassInfo):
 
             else:
                 logger.warning(
-                    f"No iterable body found in `invoke_model_with_response_stream` response."
+                    "No iterable body found in `invoke_model_with_response_stream` response."
                 )
 
         else:

@@ -224,14 +224,8 @@ class OpenAIEndpoint(Endpoint, WithClassInfo):
             f"\tresponse: {response}"
         )
 
-        model_name = ""
-        if 'model' in bindings.kwargs:
-            model_name = bindings.kwargs["model"]
-
-        results = None
-        if "results" in response:
-            results = response['results']
-
+        model_name = bindings.kwargs["model"] if 'model' in bindings.kwargs else ""
+        results = response['results'] if "results" in response else None
         counted_something = False
         if hasattr(response, 'usage'):
 
@@ -280,8 +274,7 @@ class OpenAIEndpoint(Endpoint, WithClassInfo):
 
         if not counted_something:
             logger.warning(
-                f"Could not find usage information in openai response:\n" +
-                pp.pformat(response)
+                f"Could not find usage information in openai response:\n{pp.pformat(response)}"
             )
 
     def __init__(
@@ -316,7 +309,7 @@ class OpenAIEndpoint(Endpoint, WithClassInfo):
             self_kwargs['client'] = OpenAIClient(client=client)
 
         else:
-            if len(kwargs) != 0:
+            if kwargs:
                 logger.warning(
                     f"Arguments {list(kwargs.keys())} are ignored as `client` was provided."
                 )
@@ -324,7 +317,7 @@ class OpenAIEndpoint(Endpoint, WithClassInfo):
             # Convert openai client to our wrapper if needed.
             if not isinstance(client, OpenAIClient):
                 assert isinstance(client, (oai.OpenAI, oai.AzureOpenAI)), \
-                    "OpenAI client expected"
+                        "OpenAI client expected"
 
                 client = OpenAIClient(client=client)
 

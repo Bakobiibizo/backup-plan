@@ -81,11 +81,7 @@ def is_legacy_sqlite(engine: Engine) -> bool:
     inspector = sql_inspect(engine)
     tables = list(inspector.get_table_names())
 
-    if len(tables) == 0:
-        # brand new db, not even initialized yet
-        return False
-
-    return not "alembic_version" in tables
+    return False if not tables else "alembic_version" not in tables
 
     #return DbRevisions.load(engine).current is None
 
@@ -110,7 +106,7 @@ def check_db_revision(engine: Engine):
     """
 
     if is_legacy_sqlite(engine):
-        logger.info("Found legacy SQLite file: %s" % (engine.url,))
+        logger.info(f"Found legacy SQLite file: {engine.url}")
         raise DatabaseVersionException.behind()
 
     revisions = DbRevisions.load(engine)

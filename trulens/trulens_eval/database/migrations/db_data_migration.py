@@ -71,8 +71,7 @@ def _sql_alchemy_serialization_asserts(db: "DB") -> None:
             mod_check = str(orm_obj).split(".")
 
             # Check only orm defined classes
-            if len(mod_check) > 2 and "orm" == mod_check[
-                    -2]:  # <class mod.mod.mod.orm.SQLORM>
+            if len(mod_check) > 2 and mod_check[-2] == "orm":  # <class mod.mod.mod.orm.SQLORM>
                 stmt = select(orm_obj)
 
                 # for each record in this orm table
@@ -140,15 +139,12 @@ def data_migrate(db: "DB", from_version: str):
         VersionException: Can raise a migration or validation upgrade error
     """
 
-    if from_version is None:
-        sql_alchemy_from_version = "1"
-    else:
-        sql_alchemy_from_version = from_version
+    sql_alchemy_from_version = "1" if from_version is None else from_version
     from_compat_version = _get_sql_alchemy_compatibility_version(
         sql_alchemy_from_version
     )
     to_compat_version = None
-    fail_advice = f"Please open a ticket on trulens github page including this error message. The migration completed so you can still proceed; but stability is not guaranteed. If needed, you can `tru.reset_database()`"
+    fail_advice = "Please open a ticket on trulens github page including this error message. The migration completed so you can still proceed; but stability is not guaranteed. If needed, you can `tru.reset_database()`"
 
     try:
         while from_compat_version in sqlalchemy_upgrade_paths:

@@ -91,6 +91,7 @@ Our example notebooks will only check that the api_key is set but will make use
 of the configured openai object as needed to compute feedback.
 """
 
+
 from collections import defaultdict
 import logging
 import os
@@ -148,7 +149,7 @@ REDACTED_VALUE = "__tru_redacted"
 
 # Treat these value as not valid keys. Use any as a templates to suggest a user
 # fills in the key.
-TEMPLATE_VALUES = set(["to fill in"])
+TEMPLATE_VALUES = {"to fill in"}
 
 global cohere_agent
 cohere_agent = None
@@ -172,10 +173,7 @@ def redact_value(v: Union[str, Any],
     `setup_keys`.
     """
 
-    if should_redact_key(k) or should_redact_value(v):
-        return REDACTED_VALUE
-    else:
-        return v
+    return REDACTED_VALUE if should_redact_key(k) or should_redact_value(v) else v
 
 
 def get_config_file() -> Path:
@@ -193,25 +191,21 @@ def get_config_file() -> Path:
 
 def get_config() -> Tuple[Path, dict]:
     config_file = get_config_file()
-    if config_file is None:
-        logger.warning(
-            f"No .env found in {Path.cwd()} or its parents. "
-            "You may need to specify secret keys in another manner."
-        )
-        return None, None
-    else:
+    if config_file is not None:
         return config_file, dotenv.dotenv_values(config_file)
+    logger.warning(
+        f"No .env found in {Path.cwd()} or its parents. "
+        "You may need to specify secret keys in another manner."
+    )
+    return None, None
 
 
 def get_huggingface_headers() -> Dict[str, str]:
-    HUGGINGFACE_HEADERS = {
-        "Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"
-    }
-    return HUGGINGFACE_HEADERS
+    return {"Authorization": f"Bearer {os.environ['HUGGINGFACE_API_KEY']}"}
 
 
 def _value_is_set(v: str) -> bool:
-    return not (v is None or v in TEMPLATE_VALUES or v == "")
+    return not (v is None or v in TEMPLATE_VALUES or not v)
 
 
 class ApiKeyError(RuntimeError):
@@ -252,11 +246,10 @@ For the last two options, the name of the argument may differ from {k} (i.e. `Op
             print(f"{UNICODE_STOP} {msg}")
             if warn:
                 logger.warning(msg)
+        elif warn:
+            return False
         else:
-            if warn:
-                return False
-            else:
-                raise ApiKeyError(key=k, msg=msg)
+            raise ApiKeyError(key=k, msg=msg)
 
     return True
 
@@ -315,9 +308,7 @@ def _collect_keys(*args: Tuple[str], **kwargs: Dict[str,
         # Explicit.
         temp_v = kwargs.get(k)
         if _value_is_set(temp_v):
-            valid_sources[temp_v].append(
-                f"explicit value to `check_or_set_keys`"
-            )
+            valid_sources[temp_v].append("explicit value to `check_or_set_keys`")
             valid_values.add(temp_v)
 
         # .env vars.
@@ -330,10 +321,10 @@ def _collect_keys(*args: Tuple[str], **kwargs: Dict[str,
         # Globals of caller.
         temp_v = globs.get(k)
         if _value_is_set(temp_v):
-            valid_sources[temp_v].append(f"python variable")
+            valid_sources[temp_v].append("python variable")
             valid_values.add(temp_v)
 
-        if len(valid_values) == 0:
+        if not valid_values:
             ret[k] = None
 
         elif len(valid_values) > 1:

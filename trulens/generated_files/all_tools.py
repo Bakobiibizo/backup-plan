@@ -237,7 +237,7 @@ class StandAlone(Provider):
         Returns:
             float: square length of the text
         """
-        return 1.0 / (1.0 + len(my_text_field) * len(my_text_field))
+        return 1.0 / (1.0 + len(my_text_field)**2)
 
 
 # 2. Instantiate your provider and feedback functions. The feedback function is wrapped by the trulens-eval Feedback class which helps specify what will get sent to your function parameters (For example: Select.RecordInput or Select.RecordOutput)
@@ -286,10 +286,7 @@ tru.add_feedbacks(feedback_results)
 
 # For multi-context chunking, an aggregator can operate on a list of multi output dictionaries.
 def dict_aggregator(list_dict_input):
-    agg = 0
-    for dict_input in list_dict_input:
-        agg += dict_input['output_key1']
-    return agg
+    return sum(dict_input['output_key1'] for dict_input in list_dict_input)
 
 
 multi_output_feedback = Feedback(

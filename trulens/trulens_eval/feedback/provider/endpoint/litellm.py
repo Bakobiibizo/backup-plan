@@ -39,10 +39,7 @@ class LiteLLMEndpoint(Endpoint, WithClassInfo):
         callback: Optional[EndpointCallback]
     ) -> None:
 
-        model_name = ""
-        if hasattr(response, 'model'):
-            model_name = response.model
-
+        model_name = response.model if hasattr(response, 'model') else ""
         counted_something = False
         if hasattr(response, 'usage'):
             counted_something = True
@@ -55,8 +52,7 @@ class LiteLLMEndpoint(Endpoint, WithClassInfo):
 
         if not counted_something:
             logger.warning(
-                f"Unrecognized litellm response format. It did not have usage information:\n"
-                + pp.pformat(response)
+                f"Unrecognized litellm response format. It did not have usage information:\n{pp.pformat(response)}"
             )
 
     def __init__(self, *args, **kwargs):

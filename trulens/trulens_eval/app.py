@@ -100,13 +100,11 @@ class ComponentView(ABC):
         All basic parameters not organized by other accessors.
         """
 
-        ret = {}
-
-        for k, v in self.json.items():
-            if k not in skip and isinstance(v, JSON_BASES):
-                ret[k] = v
-
-        return ret
+        return {
+            k: v
+            for k, v in self.json.items()
+            if k not in skip and isinstance(v, JSON_BASES)
+        }
 
     @staticmethod
     def innermost_base(
@@ -139,10 +137,7 @@ class LangChainComponent(ComponentView):
 
     @staticmethod
     def class_is(cls: Class) -> bool:
-        if ComponentView.innermost_base(cls.bases) == "langchain":
-            return True
-
-        return False
+        return ComponentView.innermost_base(cls.bases) == "langchain"
 
     @staticmethod
     def of_json(json: JSON) -> 'LangChainComponent':
@@ -154,10 +149,7 @@ class LlamaIndexComponent(ComponentView):
 
     @staticmethod
     def class_is(cls: Class) -> bool:
-        if ComponentView.innermost_base(cls.bases) == "llama_index":
-            return True
-
-        return False
+        return ComponentView.innermost_base(cls.bases) == "llama_index"
 
     @staticmethod
     def of_json(json: JSON) -> 'LlamaIndexComponent':
@@ -172,13 +164,7 @@ class TrulensComponent(ComponentView):
 
     @staticmethod
     def class_is(cls: Class) -> bool:
-        if ComponentView.innermost_base(cls.bases) == "trulens_eval":
-            return True
-
-        #if any(base.module.module_name.startswith("trulens.") for base in cls.bases):
-        #    return True
-
-        return False
+        return ComponentView.innermost_base(cls.bases) == "trulens_eval"
 
     @staticmethod
     def of_json(json: JSON) -> 'TrulensComponent':
@@ -433,11 +419,7 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
         feedbacks: Optional[Iterable[Feedback]] = None,
         **kwargs
     ):
-        if feedbacks is not None:
-            feedbacks = list(feedbacks)
-        else:
-            feedbacks = []
-
+        feedbacks = list(feedbacks) if feedbacks is not None else []
         # for us:
         kwargs['tru'] = tru
         kwargs['feedbacks'] = feedbacks
@@ -471,12 +453,11 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
                 logger.debug("Creating default tru.")
                 self.tru = Tru()
 
-        else:
-            if self.feedback_mode == FeedbackMode.NONE:
-                logger.warning(
-                    "`tru` is specified but `feedback_mode` is FeedbackMode.NONE. "
-                    "No feedback evaluation and logging will occur."
-                )
+        elif self.feedback_mode == FeedbackMode.NONE:
+            logger.warning(
+                "`tru` is specified but `feedback_mode` is FeedbackMode.NONE. "
+                "No feedback evaluation and logging will occur."
+            )
 
         if self.tru is not None:
             self.db = self.tru.db
@@ -489,11 +470,10 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
                 for f in self.feedbacks:
                     self.db.insert_feedback_definition(f)
 
-        else:
-            if len(self.feedbacks) > 0:
-                raise ValueError(
-                    "Feedback logging requires `tru` to be specified."
-                )
+        elif len(self.feedbacks) > 0:
+            raise ValueError(
+                "Feedback logging requires `tru` to be specified."
+            )
 
         if self.feedback_mode == FeedbackMode.DEFERRED:
             for f in self.feedbacks:
@@ -525,7 +505,7 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
         """
 
         # ignore self
-        all_args = list(v for k, v in bindings.arguments.items() if k != "self")
+        all_args = [v for k, v in bindings.arguments.items() if k != "self"]
 
         # If there is only one string arg, it is a pretty good guess that it is
         # the main input.
@@ -537,10 +517,7 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
             f"Unsure what the main input string is for the call to {callable_name(func)} with args {all_args}."
         )
 
-        if len(all_args) > 0:
-            return all_args[0]
-        else:
-            return None
+        return all_args[0] if all_args else None
 
     def main_output(
         self, func: Callable, sig: Signature, bindings: BoundArguments, ret: Any
@@ -561,11 +538,7 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
             return next(iter(ret.values()))
 
         elif isinstance(ret, Sequence):
-            if len(ret) > 0:
-                return ret[0]
-            else:
-                return None
-
+            return ret[0] if len(ret) > 0 else None
         else:
             logger.warning(
                 f"Unsure what the main output string is for the call to {callable_name(func)}."
@@ -655,32 +628,27 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
 
             self.instrumented_methods[id(obj)] = funcs
 
-            return path
-
         else:
-            if func not in funcs:
-                logger.warning(
-                    f"A new object of type {type(obj)} at 0x{id(obj):x} is calling an instrumented method {func}. "
-                    "The path of this call may be incorrect."
-                )
-
-                try:
-                    _id, f, path = next(iter(self._get_methods_for_func(func)))
-                except Exception:
-                    logger.warning(
-                        "No other objects use this function so cannot guess path."
-                    )
-                    return None
-
-                logger.warning(
-                    f"Guessing path of new object is {path} based on other object (0x{_id:x}) using this function."
-                )
-
-                return path
-
-            else:
-
+            if func in funcs:
                 return funcs.get(func)
+            logger.warning(
+                f"A new object of type {type(obj)} at 0x{id(obj):x} is calling an instrumented method {func}. "
+                "The path of this call may be incorrect."
+            )
+
+            try:
+                _id, f, path = next(iter(self._get_methods_for_func(func)))
+            except Exception:
+                logger.warning(
+                    "No other objects use this function so cannot guess path."
+                )
+                return None
+
+            logger.warning(
+                f"Guessing path of new object is {path} based on other object (0x{_id:x}) using this function."
+            )
+
+        return path
 
     def json(self, *args, **kwargs):
         # Need custom jsonification here because it is likely the model
@@ -736,7 +704,7 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
         def build_record(calls: Iterable[RecordAppCall], record_metadata: JSON):
             calls = list(calls)
 
-            assert len(calls) > 0, "No information recorded in call."
+            assert calls, "No information recorded in call."
 
             main_in = self.main_input(func, sig, bindings)
             main_out = self.main_output(func, sig, bindings, ret)
@@ -898,10 +866,7 @@ class App(AppDefinition, SerialModel, WithInstrumentCallbacks, Hashable):
             old_method = f"""call{"_with_record" if with_record else ""}"""
         new_method = f"""{"a" if is_async else ""}with_{"record" if with_record else ""}"""
 
-        app_callable = f"""app.{method}"""
-        if iscall:
-            app_callable = f"app"
-
+        app_callable = "app" if iscall else f"""app.{method}"""
         print(
             f"""
 `{old_method}` will be deprecated soon; To record results of your app's execution, use one of these options to invoke your app:

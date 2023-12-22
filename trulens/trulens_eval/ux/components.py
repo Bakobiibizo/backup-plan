@@ -66,7 +66,7 @@ def render_call_frame(frame: RecordAppCall, path=None) -> str:  # markdown
 
 
 def dict_to_md(dictionary: dict) -> str:
-    if len(dictionary) == 0:
+    if not dictionary:
         return "No metadata."
     mdheader = "|"
     mdseparator = "|"
@@ -75,15 +75,11 @@ def dict_to_md(dictionary: dict) -> str:
         mdheader = mdheader + str(key) + "|"
         mdseparator = mdseparator + "-------|"
         mdbody = mdbody + str(value) + "|"
-    mdtext = mdheader + "\n" + mdseparator + "\n" + mdbody
-    return mdtext
+    return mdheader + "\n" + mdseparator + "\n" + mdbody
 
 
 def draw_metadata(metadata: Metadata) -> str:
-    if isinstance(metadata, Dict):
-        return dict_to_md(metadata)
-    else:
-        return str(metadata)
+    return dict_to_md(metadata) if isinstance(metadata, Dict) else str(metadata)
 
 
 def draw_call(call: RecordAppCall) -> None:
@@ -95,8 +91,7 @@ def draw_call(call: RecordAppCall) -> None:
         )
     )
 
-    with st.expander(label=f"Call " + render_call_frame(top, path=path) + " " +
-                     render_selector_markdown(path)):
+    with st.expander(label=("Call " + render_call_frame(top, path=path) + " " + render_selector_markdown(path))):
 
         args = call.args
         rets = call.rets
@@ -124,21 +119,15 @@ def draw_calls(record: Record, index: int) -> None:
 
     calls = record.calls
 
-    app_step = 0
-
-    for call in calls:
-        app_step += 1
-
-        if app_step != index:
-            continue
-
-        draw_call(call)
+    for app_step, call in enumerate(calls, start=1):
+        if app_step == index:
+            draw_call(call)
 
 
 def draw_prompt_info(query: Lens, component: ComponentView) -> None:
     prompt_details_json = jsonify(component.json, skip_specials=True)
 
-    st.caption(f"Prompt details")
+    st.caption("Prompt details")
 
     path = Select.for_app(query)
 
@@ -149,22 +138,21 @@ def draw_prompt_info(query: Lens, component: ComponentView) -> None:
 
     for key, value in prompt_types.items():
         with st.expander(key.capitalize() + " " +
-                         render_selector_markdown(getattr(path, key)),
-                         expanded=True):
+                                 render_selector_markdown(getattr(path, key)),
+                                 expanded=True):
 
             if isinstance(value, (Dict, List)):
                 st.write(value)
+            elif isinstance(value, str) and len(value) > 32:
+                st.text(value)
             else:
-                if isinstance(value, str) and len(value) > 32:
-                    st.text(value)
-                else:
-                    st.write(value)
+                st.write(value)
 
 
 def draw_llm_info(query: Lens, component: ComponentView) -> None:
     llm_details_json = component.json
 
-    st.subheader(f"*LLM Details*")
+    st.subheader("*LLM Details*")
     # path_str = str(query)
     # st.text(path_str[:-4])
 
@@ -212,11 +200,6 @@ def draw_llm_info(query: Lens, component: ComponentView) -> None:
             # Add the new columns to the original DataFrame
             df = pd.concat([df.drop(column, axis=1), new_columns], axis=1)
 
-        else:
-            # TODO: add selectors to the output here
-
-            pass
-
     # Inject CSS with Markdown
 
     st.markdown(hide_table_row_index, unsafe_allow_html=True)
@@ -228,7 +211,7 @@ def draw_agent_info(query: Lens, component: ComponentView) -> None:
     # TODO: dedup
     prompt_details_json = jsonify(component.json, skip_specials=True)
 
-    st.subheader(f"*Agent Details*")
+    st.subheader("*Agent Details*")
 
     path = Select.for_app(query)
 
@@ -239,16 +222,15 @@ def draw_agent_info(query: Lens, component: ComponentView) -> None:
 
     for key, value in prompt_types.items():
         with st.expander(key.capitalize() + " " +
-                         render_selector_markdown(getattr(path, key)),
-                         expanded=True):
+                                 render_selector_markdown(getattr(path, key)),
+                                 expanded=True):
 
             if isinstance(value, (Dict, List)):
                 st.write(value)
+            elif isinstance(value, str) and len(value) > 32:
+                st.text(value)
             else:
-                if isinstance(value, str) and len(value) > 32:
-                    st.text(value)
-                else:
-                    st.write(value)
+                st.write(value)
 
 
 def draw_tool_info(query: Lens, component: ComponentView) -> None:
@@ -256,7 +238,7 @@ def draw_tool_info(query: Lens, component: ComponentView) -> None:
     # TODO: dedup
     prompt_details_json = jsonify(component.json, skip_specials=True)
 
-    st.subheader(f"*Tool Details*")
+    st.subheader("*Tool Details*")
 
     path = Select.for_app(query)
 
@@ -267,13 +249,12 @@ def draw_tool_info(query: Lens, component: ComponentView) -> None:
 
     for key, value in prompt_types.items():
         with st.expander(key.capitalize() + " " +
-                         render_selector_markdown(getattr(path, key)),
-                         expanded=True):
+                                 render_selector_markdown(getattr(path, key)),
+                                 expanded=True):
 
             if isinstance(value, (Dict, List)):
                 st.write(value)
+            elif isinstance(value, str) and len(value) > 32:
+                st.text(value)
             else:
-                if isinstance(value, str) and len(value) > 32:
-                    st.text(value)
-                else:
-                    st.write(value)
+                st.write(value)

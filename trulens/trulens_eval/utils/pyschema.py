@@ -154,21 +154,21 @@ class Module(SerialModel):
     package_name: Optional[str] = None  # some modules are not in a package
     module_name: str
 
-    def of_module(mod: ModuleType, loadable: bool = False) -> 'Module':
-        if loadable and mod.__name__ == "__main__":
+    def of_module(self, loadable: bool = False) -> 'Module':
+        if loadable and self.__name__ == "__main__":
             # running in notebook
-            raise ImportError(f"Module {mod} is not importable.")
+            raise ImportError(f"Module {self} is not importable.")
 
-        return Module(package_name=mod.__package__, module_name=mod.__name__)
+        return Module(package_name=self.__package__, module_name=self.__name__)
 
-    def of_module_name(module_name: str, loadable: bool = False) -> 'Module':
-        if loadable and module_name == "__main__":
+    def of_module_name(self, loadable: bool = False) -> 'Module':
+        if loadable and self == "__main__":
             # running in notebook
-            raise ImportError(f"Module {module_name} is not importable.")
+            raise ImportError(f"Module {self} is not importable.")
 
-        mod = importlib.import_module(module_name)
+        mod = importlib.import_module(self)
         package_name = mod.__package__
-        return Module(package_name=package_name, module_name=module_name)
+        return Module(package_name=package_name, self=self)
 
     def load(self) -> ModuleType:
         return importlib.import_module(
@@ -190,7 +190,7 @@ class Class(SerialModel):
     bases: Optional[Sequence[Class]] = None
 
     def __repr__(self):
-        return self.module.module_name + "." + self.name
+        return f"{self.module.module_name}.{self.name}"
 
     def __str__(self):
         return f"{self.name}({self.module.module_name if self.module is not None else 'no module'})"
@@ -204,11 +204,14 @@ class Class(SerialModel):
 
         module_name = self.module.module_name
 
-        for base in self.bases[::-1]:
-            if base.module.module_name == module_name:
-                return base
-
-        return self
+        return next(
+            (
+                base
+                for base in self.bases[::-1]
+                if base.module.module_name == module_name
+            ),
+            self,
+        )
 
     def _check_importable(self):
         try:
@@ -267,11 +270,10 @@ class Class(SerialModel):
 
         assert bases is not None, "Cannot do subclass check without bases. Serialize me with `Class.of_class(with_bases=True ...)`."
 
-        for base in bases:
-            if base.name == class_name and base.module.module_name == module_name:
-                return True
-
-        return False
+        return any(
+            base.name == class_name and base.module.module_name == module_name
+            for base in bases
+        )
 
 
 Class.model_rebuild()
@@ -453,13 +455,10 @@ class FunctionOrMethod(SerialModel):
         info for the callable to be deserialized.
         """
 
-        if inspect.ismethod(c):
-            self = c.__self__
-            return Method.of_method(c, obj=self, loadable=loadable)
-
-        else:
-
+        if not inspect.ismethod(c):
             return Function.of_function(c, loadable=loadable)
+        self = c.__self__
+        return Method.of_method(c, obj=self, loadable=loadable)
 
     def load(self) -> Callable:
         raise NotImplementedError()
@@ -490,13 +489,7 @@ class Method(FunctionOrMethod):
             obj = meth.__self__
 
         if cls is None:
-            if isinstance(cls, type):
-                # classmethod, self is a type
-                cls = obj
-            else:
-                # normal method, self is instance of cls
-                cls = obj.__class__
-
+            cls = obj if isinstance(cls, type) else obj.__class__
         obj_model = Obj.of_object(obj, cls=cls, loadable=loadable)
 
         return Method(obj=obj_model, name=meth.__name__)
@@ -571,24 +564,22 @@ class WithClassInfo(pydantic.BaseModel):
 
     @classmethod
     def model_validate(cls, obj, **kwargs):
-        if isinstance(obj, dict) and CLASS_INFO in obj:
-
-            clsinfo = Class.model_validate(obj[CLASS_INFO])
-            clsloaded = clsinfo.load()
-
-            # NOTE(piotrm): even though we have a more specific class than
-            # AppDefinition, we load it as AppDefinition due to serialization
-            # issues in the wrapped app. Keeping it as AppDefinition means `app`
-            # field is just json.
-            from trulens_eval.schema import AppDefinition
-
-            if issubclass(clsloaded, AppDefinition):
-                return super(cls, AppDefinition).model_validate(obj)
-            else:
-                return super(cls, clsloaded).model_validate(obj)
-
-        else:
+        if not isinstance(obj, dict) or CLASS_INFO not in obj:
             return super().model_validate(obj)
+        clsinfo = Class.model_validate(obj[CLASS_INFO])
+        clsloaded = clsinfo.load()
+
+        # NOTE(piotrm): even though we have a more specific class than
+        # AppDefinition, we load it as AppDefinition due to serialization
+        # issues in the wrapped app. Keeping it as AppDefinition means `app`
+        # field is just json.
+        from trulens_eval.schema import AppDefinition
+
+        return (
+            super(cls, AppDefinition).model_validate(obj)
+            if issubclass(clsloaded, AppDefinition)
+            else super(cls, clsloaded).model_validate(obj)
+        )
 
     def __init__(
         self,

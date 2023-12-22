@@ -48,11 +48,7 @@ def dict_merge_with(dict1: Dict, dict2: Dict, merge: Callable) -> Dict:
     values.
     """
     for k, v in dict2.items():
-        if k in dict1:
-            dict1[k] = merge(dict1[k], v)
-        else:
-            dict1[k] = v
-
+        dict1[k] = merge(dict1[k], v) if k in dict1 else v
     return dict1
 
 

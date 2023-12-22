@@ -489,7 +489,7 @@ class Instrument(object):
             # My own stacks to be looked up by further subcalls by the logic
             # right above. We make a copy here since we need subcalls to access
             # it but we don't want them to modify it.
-            stacks = {k: v for k, v in ctx_stacks.items()}
+            stacks = dict(ctx_stacks.items())
 
             start_time = None
             end_time = None
@@ -522,14 +522,7 @@ class Instrument(object):
                     )
                     continue
 
-                if ctx not in ctx_stacks:
-                    # If we are the first instrumented method in the chain
-                    # stack, make a new stack tuple for subsequent deeper calls
-                    # (if any) to look up.
-                    stack = ()
-                else:
-                    stack = ctx_stacks[ctx]
-
+                stack = () if ctx not in ctx_stacks else ctx_stacks[ctx]
                 frame_ident = RecordAppCallMethod(
                     path=path, method=Method.of_method(func, obj=obj, cls=cls)
                 )
@@ -672,7 +665,7 @@ class Instrument(object):
             # My own stacks to be looked up by further subcalls by the logic
             # right above. We make a copy here since we need subcalls to access
             # it but we don't want them to modify it.
-            stacks = {k: v for k, v in ctx_stacks.items()}
+            stacks = dict(ctx_stacks.items())
 
             start_time = None
             end_time = None
@@ -703,14 +696,7 @@ class Instrument(object):
                     )
                     continue
 
-                if ctx not in ctx_stacks:
-                    # If we are the first instrumented method in the chain
-                    # stack, make a new stack tuple for subsequent deeper calls
-                    # (if any) to look up.
-                    stack = ()
-                else:
-                    stack = ctx_stacks[ctx]
-
+                stack = () if ctx not in ctx_stacks else ctx_stacks[ctx]
                 frame_ident = RecordAppCallMethod(
                     path=path, method=Method.of_method(func, obj=obj, cls=cls)
                 )
@@ -951,10 +937,6 @@ class Instrument(object):
                         if not self.to_instrument_module(
                                 original_fun.__self__.__class__.__module__):
                             continue
-                    else:
-                        # Determine module here somehow.
-                        pass
-
                     logger.debug(f"\t\t{query}: instrumenting {method_name}")
                     setattr(
                         base, method_name,
